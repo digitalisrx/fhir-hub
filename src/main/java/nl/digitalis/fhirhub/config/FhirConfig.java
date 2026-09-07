@@ -15,6 +15,7 @@ import ca.uhn.fhir.rest.api.EncodingEnum;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
 import nl.digitalis.fhirhub.fhir.Profiles;
+import nl.digitalis.fhirhub.hub.HubProperties;
 import nl.digitalis.fhirhub.fhir.SpecificationVersion;
 import nl.digitalis.fhirhub.server.EvsProvider;
 import nl.digitalis.fhirhub.server.SurveillanceProvider;
@@ -50,9 +51,8 @@ public class FhirConfig {
 	 * <p>What is <em>not</em> shared is the provider set: each base advertises only its own
 	 * operations, which is what {@link EvsProvider} and {@link SurveillanceProvider} are for.
 	 *
-	 * <p>The operation under this base is <strong>not implemented</strong> — see
-	 * {@code SurveillanceOperationProvider}. The base exists so that the contract can be
-	 * published, validated against and reviewed before the rules engine behind it is wired up.
+	 * <p>The upstream is not shared either: this base talks to the Digitalis Hub over SOAP
+	 * ({@code hub/}) and the EVS base to Prescriptor over XML-RPC ({@code prescriptor/}).
 	 */
 	public static final String SURVEILLANCE_BASE = "/fhir/surveillance";
 
@@ -96,6 +96,20 @@ public class FhirConfig {
 
 	@Bean
 	RestClient prescriptorRestClient(PrescriptorProperties properties) {
+		return restClient(properties.targetUrl().toString(),
+				properties.connectTimeout(), properties.readTimeout());
+	}
+
+	/**
+	 * The client for the Digitalis Hub, which serves the surveillance base.
+	 *
+	 * <p>A second {@code RestClient} rather than a shared one with two base URLs: the two
+	 * upstreams have their own timeouts — a rules run plus a dose check is slower than opening a
+	 * session — and a bean per upstream is what lets a deployment move one without the other. They
+	 * are built by the same method, so the two differ in configuration and in nothing else.
+	 */
+	@Bean
+	RestClient hubRestClient(HubProperties properties) {
 		return restClient(properties.targetUrl().toString(),
 				properties.connectTimeout(), properties.readTimeout());
 	}

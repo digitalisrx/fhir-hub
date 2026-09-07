@@ -39,6 +39,22 @@ class MedicationCodeResolverTest {
 		assertThat(codes.gpk()).isEqualTo(111111);
 		// HPK is only reported when the host identified the drug at that level.
 		assertThat(codes.hpk()).isNull();
+		assertThat(codes.atc())
+				.as("read off the same row, because a beslisregel selects on ATC more often than on a product code")
+				.isEqualTo("N02BE01");
+	}
+
+	/**
+	 * A product the G-Standaard carries no ATC for — a bandage, a homeopathic product — resolves
+	 * like any other and reports the ATC as absent. It is the builder, not this, that knows the
+	 * schema spells that {@code ZZZZZZ}.
+	 */
+	@Test
+	void reportsAnAbsentAtcAsAbsentRatherThanBlank() {
+		MedicationCodes codes = resolver.resolve(List.of(new CodedItem("PRK", "12345"))).getFirst();
+
+		assertThat(codes.gpk()).isEqualTo(333333);
+		assertThat(codes.atc()).isNull();
 	}
 
 	@Test

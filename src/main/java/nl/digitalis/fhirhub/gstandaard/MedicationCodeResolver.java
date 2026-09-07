@@ -43,9 +43,14 @@ public class MedicationCodeResolver {
 	 * directions. A drug can appear on several rows — one per packaging — so the query is
 	 * ordered and the first row wins; every row carries the same PRK+GPK pair, which is all
 	 * medication surveillance needs.
+	 *
+	 * <p>{@code atc} comes along because the view already joins BST711T to get it and the
+	 * {@code /fhir/surveillance} contract needs it on every drug it sends. It is the same row and
+	 * the same round trip: asking for it costs nothing and asking for it separately would cost a
+	 * second query per drug.
 	 */
 	private static final String BY_PRK = """
-			SELECT prk, gpk, hpk
+			SELECT prk, gpk, hpk, atc
 			FROM medcode
 			WHERE prk = ?
 			AND gpk > 0
@@ -53,7 +58,7 @@ public class MedicationCodeResolver {
 			""";
 
 	private static final String BY_HPK = """
-			SELECT prk, gpk, hpk
+			SELECT prk, gpk, hpk, atc
 			FROM medcode
 			WHERE hpk = ?
 			AND prk > 0
@@ -122,7 +127,8 @@ public class MedicationCodeResolver {
 				return new MedicationCodes(
 						rows.getInt("prk"),
 						rows.getInt("gpk"),
-						byHpk ? rows.getInt("hpk") : null);
+						byHpk ? rows.getInt("hpk") : null,
+						atc(rows.getString("atc")));
 			}
 		}
 		catch (SQLException e) {
@@ -130,6 +136,17 @@ public class MedicationCodeResolver {
 			throw new InternalErrorException(
 					"The G-Standaard lookup medication surveillance depends on is unavailable");
 		}
+	}
+
+	/**
+	 * The ATC of the product, or {@code null} when the G-Standaard has none.
+	 *
+	 * <p>Blank is turned into absent here rather than passed on, so that the one place that knows
+	 * what an absent ATC means on the wire is the builder that writes it — the schema reserves
+	 * {@code ZZZZZZ} for it, and a bandage or a homeopathic product genuinely has none.
+	 */
+	private String atc(String atc) {
+		return atc == null || atc.isBlank() ? null : atc.trim();
 	}
 
 	private long toCode(CodedItem medication) {

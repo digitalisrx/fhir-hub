@@ -20,7 +20,7 @@ StructureDefinition-fhirhub-PrescriptionInput.json                     FhirHubPr
 StructureDefinition-fhirhub-ResultBundle.json                          FhirHubResultBundle            Profile     profiles-output.fsh        16 - 34
 StructureDefinition-fhirhub-SessionInput.json                          FhirHubSessionInput            Profile     profiles-parameters.fsh    28 - 111
 StructureDefinition-fhirhub-SessionOutput.json                         FhirHubSessionOutput           Profile     profiles-parameters.fsh    133 - 156
-StructureDefinition-fhirhub-SurveillanceInput.json                     FhirHubSurveillanceInput       Profile     profiles-surveillance.fsh  28 - 100
+StructureDefinition-fhirhub-SurveillanceInput.json                     FhirHubSurveillanceInput       Profile     profiles-surveillance.fsh  31 - 105
 ValueSet-allergy-causative-agent.json                                  AllergyCausativeAgentVS        ValueSet    terminology.fsh            63 - 71
 ValueSet-contra-indication.json                                        ContraIndicationVS             ValueSet    terminology.fsh            73 - 80
 ValueSet-dispensed-medication-code.json                                DispensedMedicationCodeVS      ValueSet    terminology.fsh            91 - 100

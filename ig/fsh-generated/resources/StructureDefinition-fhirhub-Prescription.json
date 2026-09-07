@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-Prescription",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Prescription",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubPrescription",
   "title": "fhir-hub prescription",
   "status": "draft",

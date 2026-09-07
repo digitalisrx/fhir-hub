@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-FormularySessionInput",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-FormularySessionInput",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubFormularySessionInput",
   "title": "$formulary-session input",
   "status": "draft",

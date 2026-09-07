@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "ext-Dosage.CodedDirections",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/ext-Dosage.CodedDirections",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "CodedDirections",
   "title": "Coded directions (NHG Tabel 25)",
   "status": "draft",

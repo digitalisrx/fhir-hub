@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ns0:Envelope xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/">
+    <ns0:Body>
+        <ns1:MedicationSurveillanceResponse xmlns:ns1="http://hub.digitalis.nl/call">
+            <ns1:asDigitalisRx>
+                <ns2:DigitalisRx xmlns:ns2="http://digitalis.nl/schema/DigitalisRx">
+                    <ns2:ClinicalRules>
+                        <ns2:reports>
+                            <ns2:report activatedRules="27" serviceVersion="2.3.20260509.1129" originalVersion="2.3.9625.20679" date="2026-09-07T11:11:16" CRID="83327A6E-FAED-4448-A20E-EFEA660C7627" TRIGGERMODE="" duration="0" durationMS="109">
+                                <ns2:rule id="MFB-0000000068-v000006" version="6" rule_type="PRD">
+                                    <ns2:title>Nierfunctie: metformine</ns2:title>
+                                    <ns2:gs BST="698T" MFBTHLBL="2005" MFBLBLNR="1"/>
+                                    <ns2:summary/>
+                                    <ns2:alert level="1"/>
+                                    <ns2:context>
+                                        <ns2:laboratoryData>
+                                            <ns2:NHG date="2026-09-06T09:05:11+00:00" id="1667" memo="KREA" caption="kreatinineklaring" value="35" bijz="MK" UID="1667" mat="O"/>
+                                        </ns2:laboratoryData>
+                                        <ns2:medication>
+                                            <ns2:drug ATC="A10BA02" directionCoded="1D1T" directionCaption="1 X per dag 1 tablet" DDD="2" PDD="0.25" supplyQuantity="20" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-26T09:05:11+00:00" UID="9064" trigger="true">
+                                                <ns2:GStandaard HPK="693332" PRK="1090" GPK="3816" UID="9064" selected="PRK" caption="METFORMINE TABLET   500MG"/>
+                                                <ns2:RVV codeSystem="ICPC1" codeValue="K86"/>
+                                            </ns2:drug>
+                                        </ns2:medication>
+                                    </ns2:context>
+                                    <ns2:actions>
+                                        <ns2:message>
+                                            <ns2:gs BST="922T" TXKODE="24760" TXMODU="605" TXTSRT="210"/>
+                                            <ns2:caption>Nierfunctie: metformine</ns2:caption>
+                                            <ns2:text>
+                                                <div class="text" schemaLocation="http://www.w3.org/MarkUp/SCHEMA/xhtml11.xsd">
+                                                    <div class="content">
+                                                        <p>Risico op lactaatacidose is verhoogd. Pati&amp;#235;nt heeft creatinineklaring 30-60 ml/min. Bij verminderde nierfunctie kan cumulatie van metformine optreden.</p>
+                                                        <ol type="1">
+                                                            <li>aanvankelijk 500 mg metformine 2x per dag</li>
+                                                            <li>vervolgens dosering geleidelijk verhogen tot standaardonderhoudsdosering<br/>Bij pati&amp;#235;nten met bijkomend risico op achteruitgang van de nierfunctie (oa dehydratie) dosering niet verder verhogen.</li>
+                                                        </ol>
+                                                    </div>
+                                                </div>
+                                            </ns2:text>
+                                        </ns2:message>
+                                    </ns2:actions>
+                                </ns2:rule>
+                                <ns2:rule id="MFB-0000002086-v000001" version="1" rule_type="PRD">
+                                    <ns2:title>Zwangerschap: metformine</ns2:title>
+                                    <ns2:gs BST="698T" MFBTHLBL="2005" MFBLBLNR="16"/>
+                                    <ns2:summary/>
+                                    <ns2:alert level="3"/>
+                                    <ns2:context>
+                                        <ns2:contraIndications>
+                                            <ns2:GStandaard CICode="1320" caption="ZWANGERSCHAP" UID="5468" date="2026-09-07T09:05:11+00:00" dateStart="2026-09-07T09:05:11+00:00" dateEnd="2026-09-07T09:05:11+00:00"/>
+                                        </ns2:contraIndications>
+                                        <ns2:medication>
+                                            <ns2:drug ATC="A10BA02" directionCoded="1D1T" directionCaption="1 X per dag 1 tablet" DDD="2" PDD="0.25" supplyQuantity="20" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-26T09:05:11+00:00" UID="9064" trigger="true">
+                                                <ns2:GStandaard HPK="693332" PRK="1090" GPK="3816" UID="9064" selected="PRK" caption="METFORMINE TABLET   500MG"/>
+                                                <ns2:RVV codeSystem="ICPC1" codeValue="K86"/>
+                                            </ns2:drug>
+                                        </ns2:medication>
+                                    </ns2:context>
+                                    <ns2:actions>
+                                        <ns2:message>
+                                            <ns2:gs BST="922T" TXKODE="4500" TXMODU="605" TXTSRT="210"/>
+                                            <ns2:caption>Zwangerschap: metformine</ns2:caption>
+                                            <ns2:text>
+                                                <div class="text" schemaLocation="http://www.w3.org/MarkUp/SCHEMA/xhtml11.xsd">
+                                                    <div class="content">
+                                                        <p>Dit is GEEN contra-indicatie.</p>
+                                                        <p>Met de beschikbare literatuur kan niet worden onderbouwd dat dit middel moet worden vermeden tijdens de zwangerschap.</p>
+                                                        <p>Kijk voor meer informatie op de website van Moeders van Morgen van Lareb via https://www.lareb.nl/mvm-kennis.</p>
+                                                    </div>
+                                                </div>
+                                            </ns2:text>
+                                        </ns2:message>
+                                    </ns2:actions>
+                                </ns2:rule>
+                                <ns2:rule id="MFB-0000008504-v000001" version="1" rule_type="PRD">
+                                    <ns2:title>Metformine + Remmers/Inductoren (actie Nee)</ns2:title>
+                                    <ns2:gs BST="698T" MFBTHLBL="2005" MFBLBLNR="5"/>
+                                    <ns2:summary/>
+                                    <ns2:alert level="3"/>
+                                    <ns2:context>
+                                        <ns2:medication>
+                                            <ns2:drug ATC="A10BA02" directionCoded="1D1T" directionCaption="1 X per dag 1 tablet" DDD="2" PDD="0.25" supplyQuantity="20" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-26T09:05:11+00:00" UID="9064" trigger="true">
+                                                <ns2:GStandaard HPK="693332" PRK="1090" GPK="3816" UID="9064" selected="PRK" caption="METFORMINE TABLET   500MG"/>
+                                                <ns2:RVV codeSystem="ICPC1" codeValue="K86"/>
+                                                <ns2:CR CodeSet="wnr5509"/>
+                                            </ns2:drug>
+                                            <ns2:drug ATC="A02BC01" directionCoded="1D1C HVO; Bij gebruik NSAID" directionCaption="1 X per dag 1 capsule een half uur voor het ontbijt; Bij gebruik NSAID" DDD="20" PDD="1" supplyQuantity="7" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-13T09:05:11+00:00" UID="9066">
+                                                <ns2:GStandaard HPK="3018040" PRK="60062" GPK="114529" UID="9066" selected="PRK" caption="OMEPRAZOL CAPSULE MSR 20MG"/>
+                                                <ns2:RVV codeSystem="ICPC1" codeValue="K86"/>
+                                                <ns2:CR CodeSet="wnr5510"/>
+                                            </ns2:drug>
+                                        </ns2:medication>
+                                    </ns2:context>
+                                    <ns2:actions>
+                                        <ns2:message>
+                                            <ns2:gs BST="922T" TXKODE="24056" TXMODU="605" TXTSRT="210"/>
+                                            <ns2:caption>Metformine + Remmers/Inductoren (actie Nee)</ns2:caption>
+                                            <ns2:text>
+                                                <div class="text" schemaLocation="http://www.w3.org/MarkUp/SCHEMA/xhtml11.xsd">
+                                                    <div class="content">
+                                                        <p>Bij deze interactie is GEEN actie nodig.</p>
+                                                        <p>De metformine AUC stijgt ongeveer 1.3-2x en de Cmax 1.2-2x.<br/>Metformine heeft een grote therapeutische breedte. Er is geen goede correlatie tussen bloedspiegel en effect of bijwerkingen.</p>
+                                                        <p>Metformine wordt getransporteerd door de organische kationtransporter 1 en 2 (OCT1 en OCT2) en de multidrug and toxin extrusion (MATE) transporters. De OCT transporters zorgen voor transport de cel in, terwijl de MATE transporters zorgen voor transport de cel uit. Voor de interacties zijn de OCT1 en MATE1 transporter in de hepatocyten en de OCT2 en MATE2-K transporter in de epitheelcellen van de nieren van belang.</p>
+                                                        <p>Cimetidine, isavuconazol en trimethoprim remmen OCT1, OCT2 en/of MATE1. Pyrimethamine remt MATE1 en MATE2-K. PPI&amp;#8217;s remmen OCT1, 2 en 3.<br/>Rifampicine induceert OCT1.</p>
+                                                    </div>
+                                                </div>
+                                            </ns2:text>
+                                        </ns2:message>
+                                    </ns2:actions>
+                                </ns2:rule>
+                            </ns2:report>
+                        </ns2:reports>
+                    </ns2:ClinicalRules>
+                </ns2:DigitalisRx>
+            </ns1:asDigitalisRx>
+        </ns1:MedicationSurveillanceResponse>
+    </ns0:Body>
+</ns0:Envelope>

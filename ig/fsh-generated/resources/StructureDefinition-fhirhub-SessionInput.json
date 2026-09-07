@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-SessionInput",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SessionInput",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubSessionInput",
   "title": "Session input (shared base)",
   "status": "draft",

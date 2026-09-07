@@ -28,6 +28,20 @@ public final class CodeSystemTokens {
 	/** Prescribed-at level only: a host never sends current medication as a GPK. */
 	public static final String GPK = "GPK";
 
+	/**
+	 * Two tokens that travel outbound only.
+	 *
+	 * <p>{@code ATC} is an attribute of {@code <drug>} and {@code LOINC} is an element name rather
+	 * than an attribute, so neither is a subsystem a code is <em>routed</em> into the way the
+	 * others are. They are here because a medication-surveillance report echoes both back inside a
+	 * finding's context, and {@code CodeSystemRegistry.systemFor} needs a token to turn into a
+	 * system URI. Deliberately absent from the sets below: nothing accepts an inbound code in
+	 * either of them by way of this vocabulary.
+	 */
+	public static final String ATC = "ATC";
+
+	public static final String LOINC = "LOINC";
+
 	public static final Set<String> ALLERGY = Set.of(SSK, SNK, OGGRP);
 	public static final Set<String> CONTRA_INDICATION = Set.of(CI_CODE, ICPC);
 	public static final Set<String> MEDICATION = Set.of(PRK, HPK);

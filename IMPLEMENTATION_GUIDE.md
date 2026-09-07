@@ -7,7 +7,7 @@ need from this document:
 | | | |
 | --- | --- | --- |
 | **[Prescriptor](#prescriptor)** | `/fhir/evs` | Prescribing, in Prescriptor's own user interface. Your system opens a session, hands the browser over and collects the result |
-| **[Surveillance](#surveillance)** | `/fhir/surveillance` | Medication surveillance on its own, asked as a question and answered in the payload. No interface, no session — and **not implemented yet** |
+| **[Surveillance](#surveillance)** | `/fhir/surveillance` | Medication surveillance on its own, asked as a question and answered in the payload. No interface, no session: your system asks, and reads the signals in the response |
 
 Read the section for your application first. Everything after them —
 [Lab determinations](#lab-determinations), [Profiles](#profiles),
@@ -183,7 +183,7 @@ curl -sS 'http://localhost:8080/fhir/evs/metadata?_format=json'
 ```
 
 **`software.version` is the release of this specification the deployment implements**, e.g.
-`0.2.0` — not a build number of the service, and not the FHIR version, which is `fhirVersion`.
+`0.3.0` — not a build number of the service, and not the FHIR version, which is `fhirVersion`.
 Read it before you start sending anything introduced in a later release: a parameter name this
 deployment does not know is a 400 rather than an ignored element, because the request profiles
 close the list of names. `implementation.description` names the same release alongside the
@@ -546,20 +546,26 @@ browser round trip — your system asks, and reads the answer in the response.
 ```
 Base            /fhir/surveillance
 Interaction     one request, one answer
-Implemented     NO — a conformant request is answered with 501
+Answers         a Bundle of DetectedIssue, one entry per signal
 ```
 
 | Operation | |
 | --- | --- |
-| [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication) | Weigh prescriptions against a patient's context. **Published, not implemented** |
+| [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication) | Weigh prescriptions against a patient's context |
 | `GET /fhir/surveillance/metadata` | The CapabilityStatement of this base. Unauthenticated |
 
-> **Not implemented.** A request that conforms to the profile is answered with **501 Not
-> Implemented** and an `OperationOutcome`. **Nothing about a patient's medication may be concluded
-> from that response**, and nothing in your product should depend on this application yet. The
-> *request* contract is published and enforced so you can build and validate the payload — and
-> tell us it is the wrong shape — before the check behind it exists. Ask Digitalis which release
-> it is planned for.
+**What is behind it** is both halves of Dutch medication surveillance, in one call: the
+G-Standaard's **medisch-farmaceutische beslisregels** — interactions, contra-indications,
+nierfunctie and the rest — and the **classic G-Standaard checks** for allergy, age as a
+contra-indication, duplicate medication and dose control. One report comes back with the signals
+from both merged into it.
+
+> **The request contract is stable; the response is still `experimental`.** What you send has been
+> published and enforced since 0.2.0 and did not change when the check went live at 0.3.0. What you
+> get back is younger than that, no response profile is published for it, and the severity mapping
+> and the way a rule's text arrives may still move. Build against it, and agree with Digitalis how
+> you want to be told about a change before you go live. Three things it does not cover yet are
+> listed under [`$check-medication`](#post-fhirsurveillancecheck-medication).
 
 **How it differs from Prescriptor**, beyond the base and the shape of the call:
 
@@ -569,13 +575,12 @@ Implemented     NO — a conformant request is answered with 501
 | Session | yes, with a browser round trip | none |
 | What comes back | prescriptions and patient advice | the signals themselves |
 | Prescription | written in Prescriptor | proposed by your system, not created here |
-| Today | works | 501 |
 
 Nothing is prescribed, stored or dispensed through this application: it weighs what you propose
-and answers. Which classes of signal it will report — interactions, duplicate therapy, allergy and
-contra-indication signals, and the G-Standaard's medisch-farmaceutische beslisregels are the
-candidates, being the checks Prescriptor already runs inside a session — is part of what is still
-being settled, along with the response payload. See
+and answers. The signals it reports are the ones Prescriptor already runs inside a session —
+interactions, duplicate medication, allergy, contra-indication and dose signals, and the
+G-Standaard's medisch-farmaceutische beslisregels — with the difference that here they come back to
+you rather than being shown to a prescriber in Prescriptor's own screen. See
 [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication).
 
 ### Two bases, and what follows from it
@@ -611,19 +616,13 @@ one or more proposed prescriptions, which signals fire? No browser round trip an
 request, one answer. Read [Surveillance](#surveillance) first for what the application is and how
 it differs from [Prescriptor](#prescriptor).
 
-> **Published, not implemented.** A request that conforms to the profile below is answered with
-> **501 Not Implemented** and an `OperationOutcome`. **Nothing about a patient's medication may be
-> concluded from that response**, and nothing in your product should depend on this endpoint yet.
->
-> What is published is the **request** contract, and it is enforced: a malformed body still gets a
-> 400 naming what is wrong with it, and a conformant one gets the 501. So you can build the payload,
-> validate it, and tell us it is the wrong shape *before* the check behind it exists. Ask Digitalis
-> which release it is planned for.
->
-> The 501 is deliberate and will not be softened into an empty result. An empty list of findings
-> cannot be told apart from a genuine all-clear, and a prescriber who sent a medication list and saw
-> no signal would read it as one — the same false negative that makes an unresolvable drug code a
-> 400 rather than a dropped drug.
+> **An empty `Bundle` means the check ran and no rule fired.** Nothing else can produce one. Every
+> way for the check not to happen — an unreachable upstream, a refusal, a report that did not come
+> back — is a **500** with an `OperationOutcome`, never a 200 with no findings, because an empty
+> list of findings cannot be told apart from a genuine all-clear by a prescriber who sent a
+> medication list. It is the same false negative that makes an unresolvable drug code a 400 rather
+> than a dropped drug, and it is why this endpoint spent a release answering 501 rather than
+> "no issues found".
 
 ### `$check-medication` input
 
@@ -659,6 +658,34 @@ interact with each other and with nothing the patient already takes.
 **There is no `endSessionUrl` and no `reason`.** Nothing is launched, so there is no browser to
 return; and the reason for encounter drives a formulary lookup rather than surveillance. Send either
 and the closed slicing makes it a 400.
+
+#### What is read beyond the code, and what each element buys you
+
+The code identifies the drug; these decide which rules can look at it. All of them are optional in
+the profile and none of them is optional in effect.
+
+| Element | On | What it does |
+| --- | --- | --- |
+| `id` | every resource | Comes back on `DetectedIssue.implicated` for medication and in `evidence` for the rest, so you can show a signal against the row it is about instead of matching on codes. Send one |
+| `code.coding.display`, else `code.text` | `allergyIntolerance`, `condition` | Your own wording for the allergy or contra-indication. It is written into the **title and the body** of the signal — "In het dossier is een allergie (PENICILLINES) geregistreerd" — so without it the prescriber reads a sentence with a gap in it. Where you send none, the code is used |
+| `dosageInstruction` — the `CodedDirections` extension, or `text` | `prescription` | The NHG Tabel 25 instruction. Dose control cannot check a dose without it and says so in a signal |
+| `dispenseRequest.quantity` | `prescription` | The amount to be dispensed, read by dose control alongside the instruction |
+| `reasonCode`, with an ICPC-1 NL coding | `prescription` | The indication. Dose bands are keyed on the reason as well as the product; without one the check falls back to the "alle zorg" band |
+| `dispenseRequest.validityPeriod`, else `authoredOn` | `prescription` | When the prescription starts and ends |
+| `effectivePeriod`, else `effectiveDateTime` | `medicationStatement` | When the use started and, if it has, ended |
+
+**A missing start date is read as "today", and a stated one is obeyed.** Both engines skip a drug
+whose use starts in the future, and an entry with no start at all would be skipped as well — so a
+`MedicationStatement` that says nothing about dates is treated as in use as of now, which is what
+`status: active` already asserts. The consequence is the other way round: an `effectivePeriod` that
+**ended** says the patient is not taking the medication, and that entry is not weighed. Send the
+period you mean.
+
+**Weight and height are accepted and do not yet reach dose control.** They are on the
+[lab determinations](#lab-determinations) list and they travel in LOINC, and this contract's dose
+check reads them from an NHG-coded element this interface does not send yet. This one is visible
+rather than silent: where a dose band needs a weight, the answer carries a signal saying the data
+is missing.
 
 ```jsonc
 POST /fhir/surveillance/$check-medication
@@ -701,52 +728,116 @@ Authorization: Basic ...
 Allergies, contra-indications and lab results are omitted from the example for length; they are
 identical to the session payloads.
 
-### What you get back today
+### `$check-medication` output
 
-`HTTP/1.1 501 Not Implemented`, with:
+A `Bundle` with `type: collection`, one `DetectedIssue` entry per signal, in the order the report
+listed them. `Bundle.identifier` carries the report id the clinical-rules service assigned, and
+`Bundle.timestamp` the moment it ran.
 
-```json
+| Element | | |
+| --- | --- | --- |
+| `Bundle.identifier` | 0..1 | The report id (`CRID`). **Log it**: it is what Digitalis support asks for when a prescriber queries a signal, and the only handle that ties an answer to the run that produced it |
+| `Bundle.timestamp` | 0..1 | When the report was produced upstream |
+| `DetectedIssue.severity` | 0..1 | `high`, `moderate` or `low`, from the rule's own red, orange and green. Absent where the rule stated no level |
+| `DetectedIssue.code.text` | 1..1 | The title to show. The message's own title where it has one, the rule's otherwise. No coding — see below |
+| `DetectedIssue.detail` | 0..1 | The rule's full text, as plain text with the paragraphs and the numbered steps on their own lines |
+| `DetectedIssue.identifier` | 0..* | The rule's own id — `MFB-0000000068-v000006` for a beslisregel, `hub-doublemedication-prkA-1090` and its siblings for the classic checks. Stable across reports; route and de-duplicate on this |
+| `DetectedIssue.evidence.code` | 0..* | What the rule read: a drug as its PRK, GPK, HPK and ATC together, a lab result as its LOINC code with `text` carrying the determination and the value, a contra-indication as its CICode |
+| `DetectedIssue.implicated` | 0..* | The medication the risk is in, as a logical reference: `identifier.value` is the `id` you sent on that resource and `type` says whether it was a `MedicationRequest` you proposed or a `MedicationStatement` the patient already takes |
+| `DetectedIssue.identifiedDateTime` | 0..1 | The report's timestamp, repeated per finding |
+| `DetectedIssue.status` | 1..1 | Always `final` |
+
+```jsonc
+HTTP/1.1 200 OK
+
 {
-  "resourceType": "OperationOutcome",
-  "issue": [ {
-    "severity": "error",
-    "code": "not-supported",
-    "diagnostics": "Medication surveillance is published but not yet implemented: this request conforms to http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput, and the check behind it is not wired up. No conclusion about this patient's medication may be drawn from this response. Contact Digitalis for the release it is planned for."
+  "resourceType": "Bundle",
+  "identifier": { "system": "http://spec.digitalis.nl/fhir/sid/crs-report",
+                  "value": "83327A6E-FAED-4448-A20E-EFEA660C7627" },
+  "type": "collection",
+  "timestamp": "2026-09-07T11:11:16+02:00",
+  "entry": [ {
+    "fullUrl": "urn:uuid:6f1b...",
+    "resource": {
+      "resourceType": "DetectedIssue",
+      "identifier": [ { "system": "http://spec.digitalis.nl/fhir/sid/crs-rule",
+                        "value": "MFB-0000000068-v000006" } ],
+      "status": "final",
+      "code": { "text": "Nierfunctie: metformine" },
+      "severity": "high",
+      "identifiedDateTime": "2026-09-07T11:11:16+02:00",
+      "implicated": [ { "type": "MedicationRequest",
+                        "identifier": { "value": "rx-1" },
+                        "display": "METFORMINE TABLET   500MG" } ],
+      "detail": "Risico op lactaatacidose is verhoogd. Patiënt heeft creatinineklaring 30-60 ml/min...
+1. aanvankelijk 500 mg metformine 2x per dag
+2. vervolgens dosering geleidelijk verhogen tot standaardonderhoudsdosering",
+      "evidence": [
+        { "code": [ { "coding": [
+            { "system": "urn:oid:2.16.840.1.113883.2.4.4.10", "code": "1090" },
+            { "system": "urn:oid:2.16.840.1.113883.2.4.4.1",  "code": "3816" },
+            { "system": "http://www.whocc.no/atc",            "code": "A10BA02" } ],
+            "text": "METFORMINE TABLET   500MG" } ] },
+        { "code": [ { "coding": [ { "system": "http://loinc.org", "code": "62238-1" } ],
+                      "text": "kreatinineklaring: 35" } ] } ]
+    }
   } ]
 }
 ```
 
-Branch on the status and on `issue.code` (`not-supported`), never on the text — see
-[Errors](#errors).
+**A green signal is a finding, not a near-miss.** `low` means a rule fired and concluded that no
+action is needed — "Dit is GEEN contra-indicatie", "Bij deze interactie is GEEN actie nodig" — and
+it is the answer to a question the prescriber's own dossier raised. Hiding it hides that answer.
 
-### What it will return
+**For an allergy signal, `implicated` is how you read the verdict.** Each allergy in the dossier
+is weighed against each proposal, and the finding comes back either way: `low` **with no
+`implicated`** means the allergy was checked and nothing matched, and `high` **naming a drug**
+means it did. The rule's text reads "…geregistreerd voor het onderstaande middel" in both cases,
+which is the upstream's wording and is only accurate in the second — so branch on `severity` and
+`implicated`, not on the sentence.
 
-A `Bundle` of `DetectedIssue` resources, one per signal, each naming the drugs involved and
-carrying the rule's own text.
+**`code` carries no coding**, only text. The rule identifier is an identifier, and FHIR's own
+`DetectedIssue` categories (drug interaction, duplicate therapy, and so on) are a classification
+the upstream does not make; deriving one from a rule id would be this interface guessing. Route on
+`identifier`, show `code.text`.
 
-**No response profile is published, and that is deliberate.** A `StructureDefinition` with nothing
-behind it is a promise this interface cannot keep, and it would invite you to build against a shape
-of which not one instance has ever been produced. Three things are open, and each can change the
-payload:
+**No response profile is published**, and `meta.profile` is not asserted. The shape above is what
+is described instead, until it has been reviewed against real reports. Read `severity`,
+`code.text`, `detail` and `identifier`, treat everything else as additive, and do not route on
+`meta.profile` — see [Profiles](#profiles).
 
-- **The severity grades**, and how they map onto `DetectedIssue.severity`, which offers only
-  `high`, `moderate` and `low`.
-- **How a rule's own text and recommended action come across**, given that a
-  medisch-farmaceutische beslisregel carries both, in Dutch, written for a prescriber.
-- **Whether a partial answer is ever permitted.** The session contract fails closed: one
-  unresolvable code fails the request. A check that could evaluate thirty-nine rules of forty has
-  to do the same or say so in the payload, and that is a clinical decision rather than an
-  engineering one.
+### What the answer does not cover yet
 
-### How you will know it is live
+Three gaps, and each of them is a rule that stays silent rather than an error you would notice.
+They are listed here because a host has to decide what to tell a prescriber.
 
-Not from `metadata`: the CapabilityStatement lists `check-medication` today and will list it
-afterwards too — an unimplemented operation that stayed invisible could not be built against, which
-is the whole point of publishing it. The endpoint simply stops answering 501.
+- **Rules that compare the prescribed daily dose against the defined daily dose cannot fire.**
+  Computing a PDD means decoding the NHG Tabel 25 instruction, and this interface passes that string
+  through undecoded (see [Extensions](#extensions)). The dose *bands* are checked, which is the
+  larger half of dose control; the DDD ratio is not.
+- **Weight and height do not reach dose control.** See the input section above: where a band needs
+  a weight, the answer carries a "data missing" signal, so this one is at least visible.
+- **A partial answer is not distinguishable from a complete one.** If the rules engine answers and
+  the classic checks fail, the report comes back with what ran. The upstream does not say which
+  half is missing, so this interface cannot either. What it will never do is present nothing at all
+  as an all-clear.
 
-The announcement is the changelog and the release number in `software.version`, together with a
-response profile appearing under [Profiles](#profiles). Ask Digitalis to tell you directly rather
-than watching for it.
+**And one thing to know about the credentials on this base**: they are carried upstream but not
+adjudicated there, so unlike a session, a wrong practice id is not rejected with a 401 by the
+application behind this endpoint. Treat the endpoint as one to reach from your server rather than
+from a client you do not control, and talk to Digitalis about the deployment restrictions in front
+of it.
+
+### `$check-medication` errors
+
+| Condition | Status |
+| --- | --- |
+| Missing or malformed Basic credentials | 401 |
+| Body fails `fhirhub-SurveillanceInput`, or a G-Standaard code cannot be resolved | 400 |
+| The check could not be run — upstream unreachable, refused, or answered without a report | 500 |
+
+The 500s all say so in `diagnostics`, and all of them say that no conclusion may be drawn about the
+patient's medication. There is no status in this contract that means "the check partly ran".
 
 ## Lab determinations
 
@@ -916,7 +1007,7 @@ was on:
 
 ```
 None of the codings provided are in the value set 'ICPC-1 NL'
-(http://spec.digitalis.nl/fhir/ValueSet/icpc-1-nl|0.2.0), and a coding from this value set is
+(http://spec.digitalis.nl/fhir/ValueSet/icpc-1-nl|0.3.0), and a coding from this value set is
 required) (codes = ICPC#A01)
 ```
 
@@ -973,7 +1064,7 @@ all of them. No response in this API is un-parseable by a FHIR library.
 | Unknown or already-consumed session id (`No data found for the session ID`) | 401 |
 | Invalid request | 400 |
 | Prescriptor unreachable (`Could not reach Prescriptor`) or unparseable | 500 |
-| `$check-medication` called with a conformant body — the operation is published but not implemented | 501 |
+| Medication surveillance unreachable, refused, or answering without a report | 500 |
 
 A 400 comes from one of three places. Knowing which saves time when you read `diagnostics`, and
 each is quoted as returned so you can recognise it while building.
@@ -1094,7 +1185,7 @@ not in the running service.
   `Observation.category` this interface neither sends nor reads, and `nl-core-MedicationUse2` is
   not published in the nl-core package. Ask Digitalis before building anything that depends on
   nl-core conformance.
-- **The artifacts are `draft`, at version `0.2.0`.** The change policy is published, and while the
+- **The artifacts are `draft`, at version `0.3.0`.** The change policy is published, and while the
   status is `draft` it allows a breaking change at a minor version — see *Versioning and change
   policy* in the published guide. Agree with Digitalis how you want to be told about a change
   before you go live.
@@ -1103,9 +1194,11 @@ not in the running service.
   reaches Prescriptor, and comes back as a 400 from the medication lookup rather than as a
   validation error.
 
-- **Medication surveillance is published and not implemented.** `$check-medication` answers 501,
-  its request profile is enforced and no response profile exists. Build against it to check your
-  payload; do not ship a feature that depends on it. See
+- **The medication-surveillance response is `experimental` and has no profile.** The request
+  contract has been enforced since 0.2.0 and is stable; the answer is newer, and the severity
+  mapping and the way a rule's text arrives may still move. Three classes of rule cannot fire yet —
+  the PDD-against-DDD dose comparison, anything needing a weight, and nothing tells a partial
+  answer from a complete one. See
   [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication).
 
 Questions, or a case this document does not cover: contact Digitalis.

@@ -1,4 +1,4 @@
-package nl.digitalis.fhirhub.prescriptor;
+package nl.digitalis.fhirhub.xml;
 
 import java.io.StringWriter;
 import java.util.function.Consumer;
@@ -15,8 +15,12 @@ import javax.xml.stream.XMLStreamWriter;
  * practice id or lab value produced a malformed request, and the same hole let caller-supplied
  * text inject arbitrary XML. Everything here goes through StAX, which escapes text and
  * attribute values as a matter of course.
+ *
+ * <p>It lives in a package of its own because there are two upstreams now: the XML-RPC dialect
+ * Prescriptor speaks ({@code prescriptor/}) and the SOAP call the Hub takes ({@code hub/}).
+ * Whichever one is edited, the escaping is the same escaping.
  */
-final class XmlWriter {
+public final class XmlWriter {
 
 	private static final XMLOutputFactory FACTORY = XMLOutputFactory.newFactory();
 
@@ -27,7 +31,7 @@ final class XmlWriter {
 	}
 
 	/** Builds a standalone XML document and returns it as a string. */
-	static String document(Consumer<XmlWriter> body) {
+	public static String document(Consumer<XmlWriter> body) {
 		StringWriter buffer = new StringWriter();
 		try {
 			XMLStreamWriter writer = FACTORY.createXMLStreamWriter(buffer);
@@ -56,7 +60,7 @@ final class XmlWriter {
 	 * re-test on a whim, so the wire format is pinned rather than left to dependency resolution.
 	 * {@code empty()} still self-closes deliberately, and is unaffected.
 	 */
-	XmlWriter element(String name, Consumer<XmlWriter> body) {
+	public XmlWriter element(String name, Consumer<XmlWriter> body) {
 		run(() -> out.writeStartElement(name));
 		body.accept(this);
 		run(() -> {
@@ -67,20 +71,48 @@ final class XmlWriter {
 		return this;
 	}
 
-	XmlWriter empty(String name) {
+	public XmlWriter empty(String name) {
 		run(() -> out.writeEmptyElement(name));
 
 		return this;
 	}
 
-	XmlWriter attribute(String name, String value) {
+	/**
+	 * An element that declares a default namespace, so that it and every unprefixed element
+	 * inside it are in that namespace — {@code <DigitalisRx xmlns="http://digitalis.nl/…">}.
+	 *
+	 * <p>Written as a default declaration rather than with a prefix on purpose. The SOAP body the
+	 * Hub takes contains a whole second document in its own namespace, and every element of that
+	 * document is qualified ({@code elementFormDefault="qualified"}); declaring the namespace once
+	 * at its root means the rest of the builder is prefix-free and reads like the schema. A
+	 * prefixed spelling is the same infoset, and would put the prefix in every line of it.
+	 *
+	 * <p>The namespace is a literal from a schema in every use here, never caller-supplied — an
+	 * attacker-controlled URI in a declaration would be a way to smuggle markup that
+	 * {@link #attribute} otherwise escapes.
+	 */
+	public XmlWriter element(String name, String defaultNamespace, Consumer<XmlWriter> body) {
+		run(() -> {
+			out.writeStartElement(name);
+			out.writeDefaultNamespace(defaultNamespace);
+		});
+		body.accept(this);
+		run(() -> {
+			out.writeCharacters("");
+			out.writeEndElement();
+		});
+
+		return this;
+	}
+
+	public XmlWriter attribute(String name, String value) {
 		run(() -> out.writeAttribute(name, value == null ? "" : value));
 
 		return this;
 	}
 
 	/** An element with simple text content, e.g. {@code <name>BirthDate</name>}. */
-	XmlWriter text(String name, String value) {
+	public XmlWriter text(String name, String value) {
 		run(() -> {
 			out.writeStartElement(name);
 			out.writeCharacters(value == null ? "" : value);
@@ -96,7 +128,7 @@ final class XmlWriter {
 	 * <p>An unsplit {@code ]]>} would terminate the section early and corrupt the enclosing
 	 * document — the one escaping hazard StAX does not handle for you.
 	 */
-	XmlWriter cdata(String value) {
+	public XmlWriter cdata(String value) {
 		String[] chunks = (value == null ? "" : value).split("]]>", -1);
 		for (int i = 0; i < chunks.length; i++) {
 			if (i > 0) {

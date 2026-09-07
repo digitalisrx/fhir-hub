@@ -35,7 +35,8 @@ import nl.digitalis.fhirhub.model.SessionType;
 
 class SessionParametersMapperTest {
 
-	private final SessionParametersMapper mapper = new SessionParametersMapper(new CodeSystemRegistry(), new LabDeterminations());
+	private final SessionParametersMapper mapper = new SessionParametersMapper(new CodeSystemRegistry(),
+			new ClinicalContextMapper(new CodeSystemRegistry(), new LabDeterminations()));
 
 	@Test
 	void mapsAMinimalFormularySession() {

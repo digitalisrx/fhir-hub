@@ -14,8 +14,11 @@ import ca.uhn.fhir.validation.FhirValidator;
 import ca.uhn.fhir.validation.ResultSeverityEnum;
 import ca.uhn.fhir.validation.ValidationOptions;
 import ca.uhn.fhir.validation.ValidationResult;
+import nl.digitalis.fhirhub.Fixtures;
 import nl.digitalis.fhirhub.fhir.Profiles;
 import nl.digitalis.fhirhub.fhir.ResultBundleMapper;
+import nl.digitalis.fhirhub.fhir.SurveillanceBundleMapper;
+import nl.digitalis.fhirhub.hub.MedicationSurveillanceResponseParser;
 import nl.digitalis.fhirhub.model.AdviceResult;
 import nl.digitalis.fhirhub.model.Directions;
 import nl.digitalis.fhirhub.model.DrugCode;
@@ -42,6 +45,9 @@ class OutboundPayloadConformanceTest {
 	@Autowired
 	private ResultBundleMapper mapper;
 
+	@Autowired
+	private SurveillanceBundleMapper surveillanceMapper;
+
 	@Test
 	void theResultBundleSatisfiesItsProfile() {
 		Bundle bundle = mapper.toBundle(new SessionResult(
@@ -58,9 +64,34 @@ class OutboundPayloadConformanceTest {
 		assertThat(errorsIn(mapper.toBundle(new SessionResult(List.of(), List.of())))).isEmpty();
 	}
 
+	/**
+	 * The surveillance Bundle is validated against base R4 and against no profile, because none is
+	 * published for it — see {@code SurveillanceBundleMapper}. That is a weaker check than the one
+	 * above and still worth having: it is what would catch a DetectedIssue missing its mandatory
+	 * status, an identifier without a system, or a reference that is neither a URL nor an
+	 * identifier. Every response of this contract is built by that mapper, and nothing else
+	 * validates it.
+	 */
+	@Test
+	void theSurveillanceBundleIsValidFhir() {
+		Bundle bundle = surveillanceMapper.toBundle(
+				new MedicationSurveillanceResponseParser().parse(
+						Fixtures.hubXml("medication-surveillance-response.xml")));
+
+		assertThat(errorsIn(bundle, null)).isEmpty();
+	}
+
 	private List<String> errorsIn(Bundle bundle) {
-		ValidationResult result = validator.validateWithResult(bundle,
-				new ValidationOptions().addProfile(Profiles.RESULT_BUNDLE));
+		return errorsIn(bundle, Profiles.RESULT_BUNDLE);
+	}
+
+	private List<String> errorsIn(Bundle bundle, String profile) {
+		ValidationOptions options = new ValidationOptions();
+		if (profile != null) {
+			options.addProfile(profile);
+		}
+
+		ValidationResult result = validator.validateWithResult(bundle, options);
 
 		return result.getMessages().stream()
 				.filter(message -> message.getSeverity() == ResultSeverityEnum.ERROR

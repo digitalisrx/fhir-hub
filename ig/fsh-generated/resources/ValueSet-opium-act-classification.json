@@ -6,7 +6,7 @@
   "title": "Opiumwet classification",
   "description": "The Opiumwet codes from G-Standaard BST401T rubriek 72.",
   "url": "http://spec.digitalis.nl/fhir/ValueSet/opium-act-classification",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "experimental": false,
   "compose": {
     "include": [

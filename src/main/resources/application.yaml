@@ -19,6 +19,17 @@ prescriptor:
   connect-timeout: 10s
   read-timeout: 30s
 
+hub:
+  # The Digitalis Hub's SOAP endpoint, which serves /fhir/surveillance/$check-medication. The
+  # trailing slash is not decoration: the service is mounted at call/ and a request without it
+  # is redirected.
+  target-url: ${HUB_TARGET_URL:https://hub.digitalis.nl/call/}
+  connect-timeout: 10s
+  # Longer than Prescriptor's. One check runs the clinical-rules engine and then, per proposed
+  # drug, a series of G-Standaard lookups for the dose bands; the rules half is measured in
+  # milliseconds and the dose half is the one that can be slow.
+  read-timeout: 60s
+
 logging:
   level:
     nl.digitalis.fhirhub: ${LOG_LEVEL:INFO}

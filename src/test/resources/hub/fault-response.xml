@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Hub raises spyne's InvalidInputError for anything it cannot process, which serialises as
+     a SOAP 1.1 fault carried on HTTP 500. -->
+<senv:Envelope xmlns:senv="http://schemas.xmlsoap.org/soap/envelope/">
+    <senv:Body>
+        <senv:Fault>
+            <faultcode>senv:Client.InvalidInput</faultcode>
+            <faultstring>DigitalisRx.xml is empty, None</faultstring>
+        </senv:Fault>
+    </senv:Body>
+</senv:Envelope>

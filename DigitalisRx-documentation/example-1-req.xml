@@ -1,0 +1,44 @@
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body>
+        <MedicationSurveillance>
+            <DigitalisRx xmlns="http://digitalis.nl/schema/DigitalisRx">
+                <schemaVersion id="id0"/>
+                    <xisInfo>
+                        <licenseKey email="" password="" organisationUnitId=""/>
+                    </xisInfo>
+                <patient>
+                    <gender>F</gender>
+                    <dob>2007-09-07</dob>
+                    <allergies>
+                        <GStandaard OGGrp="35" caption="PENICILLINES" UID="5469" date="2026-09-07T09:05:11+00:00" dateStart="2026-09-07T09:05:11+00:00" dateEnd="2026-09-07T09:05:11+00:00"/>
+                        <GStandaard SNK="10499" caption="TALK" UID="5470" date="2026-09-07T09:05:11+00:00" dateStart="2026-09-07T09:05:11+00:00" dateEnd="2026-09-07T09:05:11+00:00"/>
+                    </allergies>
+                    <indications>
+                    </indications>
+                    <contraIndications>
+                        <GStandaard CICode="1320" caption="ZWANGERSCHAP" UID="5468" date="2026-09-07T09:05:11+00:00" dateStart="2026-09-07T09:05:11+00:00" dateEnd="2026-09-07T09:05:11+00:00"/>
+                    </contraIndications>
+                    <medication>
+                        <drug ATC="A10BA02" directionCoded="1D1T" directionCaption="1 X per dag 1 tablet" DDD="2" PDD="0.25" supplyQuantity="20" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-26T09:05:11+00:00" UID="9064" trigger="true">
+                            <GStandaard HPK="693332" PRK="1090" GPK="3816" UID="9064" selected="PRK" caption="METFORMINE TABLET   500MG"/>
+                            <RVV codeSystem="ICPC1" codeValue="K86"/>
+                        </drug>
+                        <drug ATC="M01AE01" directionCoded="3-4D1T" directionCaption="3-4 X per dag 1 tablet" DDD="1.2" PDD="1.1655" supplyQuantity="20" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-11T09:05:11+00:00" UID="9065">
+                            <GStandaard HPK="1132660" PRK="27278" GPK="51004" UID="9065" selected="PRK" caption="IBUPROFEN TABLET 400MG"/>
+                            <RVV codeSystem="ICPC1" codeValue="K86"/>
+                        </drug>
+                        <drug ATC="A02BC01" directionCoded="1D1C HVO; Bij gebruik NSAID" directionCaption="1 X per dag 1 capsule een half uur voor het ontbijt; Bij gebruik NSAID" DDD="20" PDD="1" supplyQuantity="7" supplyUnit="ST" doseQuantity="0" doseUnit="" pending="false" date="2026-09-06T09:05:11+00:00" dateEnd="2026-09-13T09:05:11+00:00" UID="9066">
+                            <GStandaard HPK="3018040" PRK="60062" GPK="114529" UID="9066" selected="PRK" caption="OMEPRAZOL CAPSULE MSR 20MG"/>
+                            <RVV codeSystem="ICPC1" codeValue="K86"/>
+                        </drug>
+                    </medication>
+                    <laboratoryData>
+                        <LOINC caption="kreatinineklaring" date="2026-09-06" num="62238-1" time="09:05:11+00:00" UID="1667" value="35" />
+                    </laboratoryData>
+                </patient>
+                <Prescriptor>
+                </Prescriptor>
+            </DigitalisRx>
+        </MedicationSurveillance>
+    </s:Body>
+</s:Envelope>

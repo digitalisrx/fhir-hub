@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-PrescriptionInput",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-PrescriptionInput",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubPrescriptionInput",
   "title": "fhir-hub prescription input",
   "status": "draft",

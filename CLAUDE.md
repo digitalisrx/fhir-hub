@@ -6,15 +6,18 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 One FHIR R4 interface in front of **two applications**, on two FHIR bases.
 
-**Prescriptor**, at `/fhir/evs`, is the one that works: functionally equivalent to **v2** of
+**Prescriptor**, at `/fhir/evs`, is the larger of the two: functionally equivalent to **v2** of
 `../json-interface` (Node/TypeScript) with authentication moved from the request body to HTTP Basic.
 Stateless proxy: FHIR in, XML-RPC to Prescriptor, FHIR out. No session store. It does read the
 G-Standaard database, read-only, to resolve current medication for medication surveillance.
 
-**Surveillance**, at `/fhir/surveillance`, is published and not implemented — `$check-medication`
-validates its request and then answers 501. See *A second base, for a contract that does not work
-yet* below. Unless a note says otherwise, everything in this file is about the Prescriptor
-contract.
+**Surveillance**, at `/fhir/surveillance`, answers `$check-medication`: FHIR in, a `DigitalisRx`
+document over SOAP to the **Digitalis Hub** (`../hub`), a `Bundle` of `DetectedIssue` out. It runs
+both halves of Dutch medication surveillance — the G-Standaard's medisch-farmaceutische
+beslisregels through the clinical-rules engine, and the classic allergy, age, duplicate-medication
+and dose checks — and it reads the same G-Standaard view, for the same PRK + GPK pair plus the ATC.
+See *The second base, and what decides whether a check happens* below. Unless a note says
+otherwise, everything in this file is about the Prescriptor contract.
 
 Read `README.md` first — it holds the operation contracts, the full JSON→FHIR mapping table,
 and the open items. This file covers what the README does not: why the code is shaped as it is.
@@ -22,8 +25,8 @@ and the open items. This file covers what the README does not: why the code is s
 ## Commands
 
 ```bash
-mvn test                 # 123 tests; no network and no database — WireMock stubs
-                         # Prescriptor, H2 stands in for the medcode view
+mvn test                 # 170 tests; no network and no database — WireMock stubs
+                         # Prescriptor and the Hub, H2 stands in for the medcode view
 mvn spring-boot:run
 mvn -o test -Dtest=X     # single test class
 mvn cyclonedx:makeBom    # target/sbom.{json,xml}; not built by an ordinary install
@@ -69,38 +72,126 @@ HTTP  →  BasicAuthenticationFilter              practiceId + licenseKey off th
       →  CredentialsResolver                   …and back off the thread, for the providers
       →  server/*Provider                        HAPI @Operation methods
       →  validation/ProfileValidator             Parameters       → 400 if it fails its profile
+
+  /fhir/evs
       →  fhir/SessionParametersMapper            Parameters       → internal model
                                                   (xis, prescription, ICPC + URL validation)
       →  gstandaard/MedicationCodeResolver       PRK|HPK          → PRK+GPK(+HPK) via JDBC
       →  prescriptor/XmlRpcRequestBuilder        internal model   → XML-RPC
-      →  prescriptor/PrescriptorClient           the only HTTP call out
+      →  prescriptor/PrescriptorClient           the only HTTP call out to Prescriptor
       →  prescriptor/XmlRpcResponseParser        XML-RPC          → internal model
       →  fhir/ResultBundleMapper                 internal model   → Bundle
+
+  /fhir/surveillance
+      →  fhir/SurveillanceParametersMapper       Parameters       → internal model
+                                                  (proposals vs dossier, dosing, dates)
+      →  gstandaard/MedicationCodeResolver       PRK|HPK          → PRK+GPK(+HPK)+ATC via JDBC
+      →  hub/MedicationSurveillanceRequestBuilder  internal model → SOAP + DigitalisRx
+      →  hub/HubClient                           the only HTTP call out to the Hub
+      →  hub/MedicationSurveillanceResponseParser  report         → internal model
+      →  fhir/SurveillanceBundleMapper            internal model  → Bundle of DetectedIssue
 ```
+
+`fhir/ClinicalContextMapper` sits behind both parameter mappers and holds what the two contracts
+share: gender, birth date, allergies, conditions, current medication, lab determinations and the
+`xisId`/`xisVersion` pair. Every rule in it is safety-relevant — which `Coding.system` is routed,
+which LOINC codes are read, which unit a value must arrive in — and two copies of a fail-closed
+rule is one copy that gets softened by accident. `xml/XmlWriter` is shared the same way and for the
+same reason: the escaping is the same escaping whichever upstream is being written to.
 
 `model/` is plain records with no FHIR and no XML types. That boundary is the point: the FHIR
 mappers and the XML-RPC layer never see each other's types, so either side can change without
 dragging the other along.
 
-**There are two FHIR bases, and the second one is a stub.** `/fhir/evs` is the flow above;
-`/fhir/surveillance` carries `$check-medication`, which is published and not implemented — see
-*A second base, for a contract that does not work yet* below.
+**There are two FHIR bases and two upstreams.** They share the filter, the validator, the profiles
+and the G-Standaard lookup, and they share nothing else: `prescriptor/` speaks XML-RPC to
+Prescriptor and `hub/` speaks SOAP to the Digitalis Hub. See *The second base, and what decides
+whether a check happens* below.
 
 ## Things worth knowing before you change something
 
-**A second base, for a contract that does not work yet.** `/fhir/surveillance/$check-medication`
-asks the medication-surveillance question directly, without a session, and answers **501** with an
-`OperationOutcome` whose `issue.code` is `not-supported`. Its request profile
-(`fhirhub-SurveillanceInput`) *is* enforced, so a malformed body is still a 400 naming the element:
-an integrator can build and validate the payload before the check exists, which is the reason to
-publish an endpoint that does nothing.
+**The second base, and what decides whether a check happens.**
+`POST /fhir/surveillance/$check-medication` asks the medication-surveillance question directly:
+patient dossier and proposed prescriptions in, a `Bundle` of `DetectedIssue` out. The upstream is
+the **Digitalis Hub** (`../hub`, a Django/spyne SOAP service), which runs the clinical-rules engine
+for the G-Standaard's beslisregels and then its own G-Standaard checks — allergy, age, duplicate
+medication, dose control — and merges both into one `<report>`.
 
-Four things there are decisions, and each is easy to undo by accident.
+What follows are the decisions in that flow, and every one of them is easy to undo by accident —
+most of them fail as a check that quietly does not run rather than as an error.
 
-**The 501 must not become a 200.** An empty `Bundle` of findings cannot be told apart from a
-genuine all-clear, and a prescriber who sent a medication list and saw no signal reads it as one —
-the same false negative that makes an unresolvable G-Standaard code a 400 rather than a dropped
-drug. A stub that returns "no issues found" is the one failure mode this whole file is about.
+**Which drug is being checked is marked twice, and both marks are load-bearing.** The one call
+reaches two engines that read different attributes:
+
+- `pending="true"` is what the Hub's own checks select on (`MbFactorySettings.get_pending_medications`).
+  `MbFactory.process()` returns immediately if no drug carries it, so *none* of the classic
+  G-Standaard checks run — and the response still looks like a complete answer.
+- `trigger="true"` is what the rules engine reads (`TCREDrug.ReadFromXML`). It deliberately does
+  not treat `pending="true"` as pending; the value it looks for there is `trueevs`, because marking
+  the drug under test with `pending` "had too many side effects" (RM#6332).
+
+The two published examples in `DigitalisRx-documentation/` and `../hub/docs/examples_call/` each
+carry one of them, which is how the split was found. `MedicationSurveillanceRequestBuilderTest`
+pins both.
+
+**Every drug carries a `date` and an `ATC`, and neither is decoration.** Both engines filter the
+dossier on the start date — the Hub's xpath compares `substring(@date,1,10)` numerically, and an
+absent attribute is not a number — so a drug without one is dropped from the check rather than
+rejected. `SurveillanceParametersMapper` therefore reads `effectivePeriod`/`effectiveDateTime`
+(or `validityPeriod`/`authoredOn` for a proposal) and falls back to *today*, which is what
+`status: active` on a `MedicationStatement` already asserts. And a beslisregel selects on ATC far
+more often than on a product code, which is why `MedicationCodeResolver` now reads `atc` off the
+same `medcode` row and `MedicationCodes` carries it. Dates go out as `yyyy-mm-dd`: ten characters
+is the clean branch of the engine's `StringToDate`.
+
+**An empty `caption` costs the prescriber the substance name, and only the live service shows it.**
+The Hub's allergy check interpolates the `caption` attribute of the allergy into the title *and*
+the body of the signal it raises, so `caption=""` produced "Allergie  (ongewenste groep)" and "In
+het dossier is een allergie ( (SNK)) geregistreerd" — well-formed, schema-valid, and useless.
+`CodedItem` therefore carries the host's own wording and its record id (from `Coding.display` or
+the concept's `text`, and from the resource `id`), `ClinicalContextMapper` fills both in, and the
+surveillance builder writes them. `DigitalisRxBuilder` still writes them empty on the EVS
+contract, and says why. This one was found by posting the payload at `hub.digitalis.nl` and
+reading the titles that came back; nothing local would have caught it.
+
+**An allergy finding says its verdict in `implicated`, not in its text.** `allergy.py` appends
+the drug to the context and escalates to level 1 only on an actual G-Standaard hit, so a green
+allergy signal with an empty medication context means "checked, nothing matched" — while its text
+still reads "voor het onderstaande middel". The guide tells integrators to branch on `severity`
+and `implicated` rather than on the sentence.
+
+**All three allergy subsystems are sent, and only one of them reaches the rules engine.**
+`TCREAllergie.ReadFromXML` reads `OGGrp` and nothing else; `SNK` and `SSK` are read by the Hub's
+own allergy check, which asks the G-Standaard service about them. So all three earn their place,
+but a beslisregel can only ever fire on an ongewenste groep — which is another reason `pending`
+matters, since without it the SNK and SSK codes are read by nothing at all.
+
+**An empty Bundle must only ever mean "the check ran and nothing fired".** Every other outcome is
+a 500 — unreachable, SOAP fault, a body that parses but carries no `<report>`. That last one is not
+hypothetical: `MbCompleteFacade` catches a failure of either engine and logs it, so a half-run
+check is a shape that can arrive. `MedicationSurveillanceResponseParser` is where the distinction
+is enforced and `SurveillanceIntegrationTest.refusesToTurnAFailedCheckIntoAnAllClear` is what keeps
+it enforced. Do not soften a parse failure into an empty result; a prescriber who sent a medication
+list and saw no signal reads it as an all-clear.
+
+**Three gaps are known, and each fails as silence.** They are documented for integrators in the
+guide rather than only here, because a host has to decide what to show a prescriber. No `PDD` or
+`DDD` is sent (computing a PDD means decoding Tabel 25, which this codebase deliberately does not
+do), so dose rules comparing the two cannot fire — the engine guards the division, so the effect is
+a silent rule rather than an error. Weight and height travel as LOINC and the Hub's dose check
+reads them from `<NHG id="357">` and `<NHG id="560">`, which this interface does not send; that one
+surfaces as a "data missing" signal rather than a pass, and note before adding it that the Hub's
+BSA formula multiplies the length it finds by 100, so its element is in metres where
+`LabDeterminations` normalises to centimetres. And nothing distinguishes a partial report from a
+complete one, because the upstream does not say.
+
+**The Hub does not adjudicate the credentials.** `CreCall.use_prescriptor_license` overwrites the
+licence in the payload with the Hub's own before calling the engine, and the
+`MedicationSurveillance` operation checks nothing else — so where a session is authenticated by
+Prescriptor rejecting a bad practice id with a 401 this interface passes through, this base accepts
+any well-formed Basic header. It is recorded in `HubClient` and in the README's open items; closing
+it is a product or deployment decision, and the property worth protecting is that this service
+holds no credential store.
 
 **A second base, not a segment under `/fhir/evs`.** FHIR reserves the path space under a base for
 resource type names, so `/fhir/evs/surveillance/$check-medication` parses as an operation on a
@@ -112,19 +203,32 @@ one `BaseProvider`, and the split is what keeps each base's CapabilityStatement 
 operations — a shared marker would make `List<BaseProvider>` the easy thing to inject and would
 advertise every session operation on the surveillance base. `SurveillanceIntegrationTest` pins both
 statements. The auth filter is registered once per base for the same reason: the paths a base
-leaves unauthenticated (`metadata`, `OperationDefinition`) are relative to it.
+leaves unauthenticated (`metadata`, `OperationDefinition`) are relative to it. The two
+`RestClient` beans are qualified by name for a duller reason — there is no Boot parent POM and so
+no `-parameters`, so Spring cannot match a constructor parameter name against a bean name and the
+context fails to start with "expected single matching bean but found 2".
 
 **One version number covers both contracts**, because there is one Implementation Guide and
 `stamp-version.mjs` puts its version on every artifact. So a release that only moves surveillance
 still moves the number `GET /fhir/evs/metadata` reports, and the changelog has to name which
 contract each change belongs to — `ig/pages/versioning.md` promises exactly that.
 
-What is *not* decided, and is recorded in `SurveillanceOperationProvider`'s Javadoc rather than
-here: which upstream serves the check (`prescriptor-api`'s `mb/` package or the Clinical Rules
-Engine directly, and whether the credentials on it are still Prescriptor's to validate — the answer
-decides whether this service can stay free of a credential store), what a `DetectedIssue` carries,
-and whether a partial answer is ever permitted. No response profile is published, because a profile
-with nothing behind it is a promise this service cannot keep.
+**No response profile is published, and `meta.profile` is not asserted.** The request profile has
+been enforced since 0.2.0 and did not move when the operation was implemented; the response shape
+has produced instances for days rather than years. The guide describes it in prose instead, and `fhirhub-SurveillanceInput` stays
+`experimental` for the response's sake rather than its own. Two things to settle before publishing
+one, both recorded in the README's open items: whether `DetectedIssue.code` should carry a coding
+for the class of check, and whether the rule text should travel as a sanitised XHTML narrative as
+well as plain text in `detail`.
+
+**The rule text is flattened to plain text on purpose.** The upstream sends XHTML, and
+`DetectedIssue.detail` gets a line-per-block rendering of it with the numbered dosing steps still
+numbered. A FHIR `Narrative.div` is validated against a fixed list of permitted elements and
+attributes, and the CRS text arrives with at least one that is not on it (`schemaLocation` on the
+wrapping div) — so carrying the markup would put the validity of every response at the mercy of
+the next rule an editor writes. `MedicationSurveillanceResponseParser.plainText` also decodes the
+double-escaped character references the engine writes (`Pati&#235;nt` arrives as six characters in
+a text node), because it is the last place that can tell them from text.
 
 **Do not build XML by string templating.** The predecessor did, unescaped, which meant a single
 `&` in a drug description or lab value produced a malformed request and let caller-supplied
@@ -154,10 +258,16 @@ number.
 one determination by taking the most recent (`TProtocolParserDataLOINC.GetValueExt`), and
 `TCRELabValueList.MostRecent` compares the `date` attribute alone and keeps the *first* of a tie. So
 a date-only value puts every result of one day at midnight and hands the decision to document
-order. `LabResult` carries a nullable `LocalTime`, and `DigitalisRxBuilder.upstreamMoment` writes
-`yyyy-MM-dd'T'HH:mm:ss` with seconds always — the engine's `StringToDate` branches on the string
+order. `LabResult` carries a nullable `LocalTime`, and both `DigitalisRxBuilder.upstreamMoment` and
+`MedicationSurveillanceRequestBuilder.moment` write `yyyy-MM-dd'T'HH:mm:ss` with seconds always — the engine's `StringToDate` branches on the string
 being exactly ten characters, so `ISO_LOCAL_DATE_TIME` would drop zero seconds and match neither
 form. A host that stated only a date still gets a date: precision is a claim.
+
+Note that the DigitalisRx schema also has a separate `time` attribute on `<LOINC>`, which the Hub's
+own examples carry — and which nothing in either the Hub or the engine reads. The surveillance
+builder writes both: the moment folded into `date`, because that is the attribute that is read, and
+`time` beside it because the schema defines it. Do not move the time out of `date` on the strength
+of the schema looking tidier.
 
 Nothing here de-duplicates or reorders the results — which one counts is the engine's decision, and
 weight and height do not even go by date (`evs2.0`'s own xpath takes the first node). That is
@@ -253,6 +363,12 @@ and wins `XMLOutputFactory.newInstance()`. Woodstox serialises an empty element 
 classpath would otherwise decide the shape of every XML-RPC request. `XmlWriter.element` writes a
 zero-length text event before the end tag to pin one form under both providers. Deleting that
 line makes the wire format depend on dependency resolution.
+
+`XmlWriter` lives in `xml/` rather than in `prescriptor/` because there are two upstreams now, and
+it grew one method for the second: `element(name, defaultNamespace, body)` declares a default
+namespace so the SOAP envelope and the DigitalisRx document inside it are each qualified without a
+prefix on every line. The namespace argument is always a literal from a schema — a caller-supplied
+one would be a way to smuggle markup past the escaping everything else goes through.
 
 **The cost is measured, in README under *Enforcement*:** +44 MB and +27 jars of dependencies, ~3 s
 for the first validation (moved into startup by `warmUpValidator`), ~70 ms per request after that.
@@ -559,14 +675,19 @@ a difference recorded from memory tends to describe a version of it that no long
 
 ## Testing
 
-Unit tests per mapper, plus `FhirHubIntegrationTest` which exercises all three operations over
-real HTTP with WireMock standing in for Prescriptor, and `SurveillanceIntegrationTest` which does
-the same for the second base — where what needs pinning is that a conformant request is refused
-with a status no client can read as a result, that the request profile is enforced anyway, and that
-neither base advertises the other's operations. That integration test is where credential
-forwarding, OperationOutcome rendering, and the CapabilityStatement are pinned — the things
-unit tests cannot see. Fixtures live in `src/test/resources/xmlrpc/`; the stand-in `medcode`
-view is `src/test/resources/gstandaard-medcode.sql`.
+Unit tests per mapper, plus `FhirHubIntegrationTest` which exercises all three session operations
+over real HTTP with WireMock standing in for Prescriptor, and `SurveillanceIntegrationTest` which
+does the same for the second base with WireMock standing in for the Hub. Those two are where
+credential forwarding, OperationOutcome rendering and the CapabilityStatements are pinned — the
+things unit tests cannot see. Fixtures live in `src/test/resources/xmlrpc/` and
+`src/test/resources/hub/`; the stand-in `medcode` view is
+`src/test/resources/gstandaard-medcode.sql`.
+
+The surveillance fixtures are the documented request and response from `DigitalisRx-documentation/`
+plus three shapes that are not documented anywhere and are what the parser has to get right: a
+report that ran and found nothing, an envelope with no report in it, and a SOAP fault. The second
+of those is the dangerous one — see *An empty Bundle* above — and it exists as a file so that
+deleting the test that reads it is visible.
 
 Three tests guard claims the rest of the build cannot see, and all three look deletable:
 
@@ -580,5 +701,9 @@ Three tests guard claims the rest of the build cannot see, and all three look de
   `version` SUSHI no longer stamps. Nothing else would notice: validation keeps working, and only
   the version in an `OperationOutcome` quietly disappears. See *The published specification*
   above.
+- `OutboundPayloadConformanceTest.theSurveillanceBundleIsValidFhir` validates the response of
+  `$check-medication` against base R4 and against no profile, because none is published for it.
+  That is weaker than the check beside it and still the only thing standing between a
+  `DetectedIssue` missing a mandatory element and a host's parser.
 
 `json-interface` had no tests at all. Keep this one from going the same way.

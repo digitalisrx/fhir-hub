@@ -69,6 +69,8 @@ public class CodeSystemRegistry {
 			case CodeSystemTokens.SNK -> Systems.G_STANDAARD_SNK;
 			case CodeSystemTokens.OGGRP -> Systems.G_STANDAARD_OGGRP;
 			case CodeSystemTokens.CI_CODE -> Systems.G_STANDAARD_CONTRA_INDICATIE;
+			case CodeSystemTokens.ATC -> Systems.ATC;
+			case CodeSystemTokens.LOINC -> Systems.LOINC;
 			default -> throw new IllegalArgumentException("No system URI known for token " + token);
 		};
 	}

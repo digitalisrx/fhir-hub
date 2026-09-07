@@ -2,6 +2,10 @@ prescriptor:
   # Overridden per test by the WireMock port; this value only has to be a valid URL.
   target-url: http://localhost:1/xmlrpc_dispatch.php
 
+hub:
+  # As above: the surveillance tests point this at their own WireMock.
+  target-url: http://localhost:1/call/
+
 logging:
   level:
     nl.digitalis.fhirhub: DEBUG

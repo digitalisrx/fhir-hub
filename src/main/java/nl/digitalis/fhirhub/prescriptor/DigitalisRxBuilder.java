@@ -9,6 +9,7 @@ import nl.digitalis.fhirhub.model.LabResult;
 import nl.digitalis.fhirhub.model.MedicationCodes;
 import nl.digitalis.fhirhub.model.PatientContext;
 import nl.digitalis.fhirhub.model.PrescriptorCredentials;
+import nl.digitalis.fhirhub.xml.XmlWriter;
 
 /**
  * Builds the inner {@code <DigitalisRx>} document that travels inside the PresPlus member.
@@ -129,6 +130,15 @@ final class DigitalisRxBuilder {
 		return lab.date().atTime(lab.time()).format(UPSTREAM_MOMENT);
 	}
 
+	/**
+	 * {@code caption} and {@code UID} stay empty here even though {@link CodedItem} carries both
+	 * since the surveillance contract needed them. Two reasons, and neither is that they would be
+	 * wrong: this wire format is pinned by {@code XmlRpcRequestBuilderTest} against a legacy
+	 * endpoint nobody can re-test on a whim, and Prescriptor resolves its own descriptions from
+	 * the G-Standaard by code rather than reading these. On the surveillance contract the Hub does
+	 * read them, which is why the builder there writes them — see
+	 * {@code MedicationSurveillanceRequestBuilder.writeGStandaard}.
+	 */
 	private static void writeGStandaard(XmlWriter xml, CodedItem item) {
 		xml.empty("GStandaard")
 				.attribute(item.codeSystem(), item.code())

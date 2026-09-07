@@ -8,7 +8,7 @@ see in a validator message is the version of the guide that produced the profile
 
 ```
 None of the codings provided are in the value set 'ICPC-1 NL'
-(http://spec.digitalis.nl/fhir/ValueSet/icpc-1-nl|0.2.0), ...
+(http://spec.digitalis.nl/fhir/ValueSet/icpc-1-nl|0.3.0), ...
 ```
 
 The running service does not carry a version anywhere in a request or a response: none in the
@@ -37,7 +37,7 @@ That is the URL a payload carries, and the one to leave in your code. Every rele
 kept at a versioned path, permanently:
 
 ```
-http://spec.digitalis.nl/fhir/0.2.0/StructureDefinition/fhirhub-FormularySessionInput
+http://spec.digitalis.nl/fhir/0.3.0/StructureDefinition/fhirhub-FormularySessionInput
 ```
 
 Point a validator at the versioned path when you want a build that cannot change under you, and
@@ -46,7 +46,7 @@ bytes for the same release; a release is never edited in place, so a versioned U
 cache forever, and the current one is not.
 
 Neither address changes what the running service accepts. Validating against 0.1.0 while the
-service has moved to 0.2.0 will not fail — it will pass on the old rules, which is exactly the
+service has moved to 0.3.0 will not fail — it will pass on the old rules, which is exactly the
 kind of green run that verifies nothing. Track the version in `metadata`.
 
 ### What a version bump means
@@ -87,7 +87,7 @@ out of `metadata` rather than assuming.
 
 ### While the status is `draft`
 
-This guide is `draft` at 0.2.0, and `draft` is not a formality: **a breaking change can arrive at
+This guide is `draft` at 0.3.0, and `draft` is not a formality: **a breaking change can arrive at
 a minor version** until the first `active` release. The three that are most likely, and the
 change each would be:
 

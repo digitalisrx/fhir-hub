@@ -1,0 +1,1279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="http://digitalis.nl/schema/DigitalisRx"
+  xmlns="http://digitalis.nl/schema/DigitalisRx" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  version="1.2.3" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- <xs:import namespace="http://www.w3.org/1999/xhtml" schemaLocation="xhtml1-strict.xsd"/> -->
+
+  <xs:annotation>
+    <xs:appinfo>
+      <xs:documentation>Versie 1.4.3.0, 2024-07-01: PharmaBase codes opgenomen </xs:documentation>
+      <xs:documentation>Versie 1.3.3.1, 2023-04-17: Tweaks </xs:documentation>
+      <xs:documentation>Versie 1.3.3.0, 2023-01-17: Opname Conformity, RxConform </xs:documentation>
+      <xs:documentation>Versie 1.2.3.2, 2022-08-26: Afdwingen van organizationType </xs:documentation>
+      <xs:documentation>Versie 1.2.0, 2021-07-26: Prescriptor element met PatientAdivces and Prescriptions </xs:documentation>
+      <xs:documentation>Versie 1.1.5, 2021-03-18: opname van date en dateEnd bij contraIndicaties </xs:documentation>
+      <xs:documentation>Versie 1.1.4, 2020-10-18: opname van element RVV onder drug </xs:documentation>
+      <xs:documentation>Versie 1.1.3, 2020-09-28: -NHG value gewijzigd van xs:float naar xs:string. </xs:documentation>
+      <xs:documentation>Versie 1.1.2, 2013-01-21: -LOINC_NUM gewijzigd naar num. </xs:documentation>
+      <xs:documentation>Versie 1.1.1, 2012-11-19: -uitbreiding met LOINC. </xs:documentation>
+      <xs:documentation>Versie 1.0, 2011-10-11: -uitbreiding met QAC structuren in message. -CRID toegevoegd aan report </xs:documentation>
+    </xs:appinfo>
+  </xs:annotation>
+
+  <xs:element name="DigitalisRx">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="schemaVersion" maxOccurs="1"/>
+        <xs:element ref="xisInfo" maxOccurs="1"/>
+        <xs:element ref="patient" maxOccurs="1"/>
+        <xs:element ref="ClinicalRules" minOccurs="0" maxOccurs="1">
+          <xs:annotation>
+            <xs:documentation>Dit is het vorige Clinical Rules Rapport dat wordt meegestuurd met de patientkenmerken als de CRS wordt benaderd.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element minOccurs="0" name="Prescriptor">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Prescriptions">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element ref="drug" minOccurs="0" maxOccurs="unbounded"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element maxOccurs="1" minOccurs="0" name="PatientAdvices">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element maxOccurs="unbounded" minOccurs="0" name="PatientAdvice"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element ref="Conformity" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="schemaVersion">
+    <xs:complexType>
+      <xs:attribute name="id" use="required" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="xisInfo">
+    <xs:annotation>
+      <xs:documentation>Deze informatie heeft betrekking op het systeem dat de aanvraag aan de Clinical Rules Services doet.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="OID" minOccurs="0"/>
+        <xs:element ref="licenseKey"/>
+        <xs:element ref="company" minOccurs="0"/>
+        <xs:element ref="companyType" minOccurs="0"/>
+        <xs:element ref="address" minOccurs="0"/>
+        <xs:element default="" minOccurs="1" name="OrganizationType" maxOccurs="1">
+          <xs:annotation>
+            <xs:documentation>Om het organizatietype te identificeren wordt gebruik gemaakt van de codes die worden gebruikt op het LSP.
+
+https://zibs.nl/wiki/Zorgaanbieder-v3.4(2020NL)#OrganisatieTypeCodelijst
+
+<OrganizationType code="Z3">Huisartspraktijk</OrganizationType>
+<OrganizationType code="J8">Openbare apotheek</OrganizationType>
+</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute name="ConceptCode" use="required"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="licenseKey">
+    <xs:complexType>
+      <xs:attribute name="email" use="required" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Komt tzt te vervallen. Voor nu dezelfde waarde als attribute organizationUnitId invoeren. </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="password" use="required" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>De huidige Digitalis licentiesleutel. Komt tzt te vervallen.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="organisationUnitId" type="xs:int" use="required">
+        <xs:annotation>
+          <xs:documentation>De huidige prakticeId voor Digitalis Producten</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="key" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>De huidige Digitalis licentiesleutel</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- 
+    <xs:element name="library">
+      <xs:complexType>
+        <xs:attribute name="source" use="required" type="xs:NCName"/>
+        <xs:attribute name="type" use="required" type="xs:NCName"/>
+      </xs:complexType>
+    </xs:element>
+-->
+
+  <xs:element name="patient">
+    <xs:annotation>
+      <xs:documentation>Dit element bevat de verschillende patientkenmerken: - Huidige actieve medicatie - labuitslagen - allergieinformatie - geboortedatum - unieke identifier voor het AIS </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="patientId">
+          <xs:annotation>
+            <xs:documentation>Identifier van de patient binnen het XIS om zo een brug te kunnen slaan tussen beide systemen. De informatie wordt alleen gecommuniceerd tussen het XIS en de CR Reporter. En blijft binnnen de grenzen van de zorginstelling.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute name="crr" type="xs:int"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+        <xs:element ref="BSN" minOccurs="0"/>
+        <xs:element ref="name" minOccurs="0"/>
+        <xs:element ref="address" minOccurs="0"/>
+        <xs:element ref="gender"/>
+        <xs:element ref="dob"/>
+        <xs:element ref="medicalExaminer" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Voor Clinical Rules Service geen vereiste. Het geeft de positie van de data aan om het rapporte via bijvoorbeeld zorgmail door te sturen naar een andere partij. Bijvoorbeeld een labaanvraag doorsturen naar huisarts via zorgmail.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element ref="allergies" minOccurs="0"/>
+        <xs:element ref="indications" minOccurs="0"/>
+        <xs:element ref="contraIndications" minOccurs="0"/>
+        <xs:element ref="medication" minOccurs="0"/>
+        <xs:element ref="laboratoryData" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="BSN" type="xs:string">
+    <xs:annotation>
+      <xs:documentation>Burger Service Nummer van de patient. Voor Clinical Rules hoeft deze info niet mee te worden gestuurd. Mocht de applicatie de DigitalisRx-xml door willen sturen naar een andere applicatie die DigitalisRx-xml snapt, dan kan het element hier geplaatst worden. De BSN mag alleen verstuurd worden als deze gevalideerd is.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+
+  <xs:element name="medicalExaminer">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="company" minOccurs="0"/>
+        <xs:element ref="companyType" minOccurs="0"/>
+        <xs:element ref="name" minOccurs="0"/>
+        <xs:element ref="gender" minOccurs="0"/>
+        <xs:element ref="address" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="name">
+    <xs:complexType>
+      <xs:all>
+        <xs:element minOccurs="0" name="prefix" type="xs:string">
+          <xs:annotation>
+            <xs:documentation>Eventueel voorvoegsel als titels meegegeven.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element minOccurs="0" name="given" type="xs:string">
+          <xs:annotation>
+            <xs:documentation>Voornaam, niet verplicht. </xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="family" type="xs:string">
+          <xs:annotation>
+            <xs:documentation>Achternaam. Deze moet minimaal aanwezig zijn als men een naam wilt doorgeven. De informatie wordt alleen gecommuniceerd tussen het XIS en de CR Reporter. En blijft binnnen de grenzen van de zorginstelling.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="allergies">
+    <xs:annotation>
+      <xs:documentation>Allergien die in het dossier van de patient zijn vastgelegd. In de waarde wordt meegenomen welke library als bron is gebruikt voor het coderen van de waarde: GStandaard, snomed, etc.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="GStandaard" minOccurs="0" maxOccurs="unbounded">
+          <xs:annotation>
+            <xs:documentation>Informatie uit de G-standaard in relatie tot het root element. Als het rootelement de "medication" betreft, komen de waarden van de attributes uit de G-standaard.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+
+            <xs:attribute form="unqualified" name="OGGrp" type="xs:int" use="optional">
+              <xs:annotation>
+                <xs:documentation>G-Standaard Ongewenste groepsnummer http://www.z-index.nl/g-standaard/beschrijvingen/technisch/veld?veldnaam=OGGRP Gerelateerd aan SNK http://www.z-index.nl/g-standaard/beschrijvingen/technisch/bestand?bestandsnaam=BST936T</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="SNK" type="xs:int"/>
+            <xs:attribute name="SSK" type="xs:int"/>
+            <xs:attribute name="HPK" type="xs:int"/>
+
+            <xs:attributeGroup ref="caption"/>
+
+            <xs:attributeGroup ref="UID"/>
+            <xs:attributeGroup ref="date"/>
+            <xs:attributeGroup ref="dateStart"/>
+            <xs:attributeGroup ref="dateEnd"/>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element minOccurs="0" name="PharmaBase" maxOccurs="unbounded">
+          <xs:complexType>
+
+            <xs:attribute name="StfGrp" type="xs:int" use="optional"/>
+
+            <!-- references -->
+            <xs:attributeGroup ref="GS_optional"/>
+            <xs:attributeGroup ref="HP_optional"/>
+
+            <xs:attributeGroup ref="UID"/>
+            <xs:attributeGroup ref="caption"/>
+            <xs:attributeGroup ref="dateStart"/>
+            <xs:attributeGroup ref="dateEnd"/>
+
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="indications">
+    <xs:annotation>
+      <xs:documentation>Indicaties die in het dossier van de patient zijn vastgelegd. In de waarde wordt meegenomen welke library als bron is gebruikt voor het coderen van de waarde: GStandaard, snomed, etc.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="ICPC"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ICPC">
+    <xs:annotation>
+      <xs:documentation>ICPC1</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+
+      <xs:attribute name="name" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>obsolete, should be "value" should contain the same value as "value"</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="source" type="xs:string" default="">
+        <xs:annotation>
+          <xs:documentation>Bron van de ICPC code - Episodelijst - Probleemlijst - Journaal</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="subcode" type="xs:integer"/>
+
+      <xs:attributeGroup ref="date"/>
+      <!-- deprecated in favor of dateStart -->
+
+      <xs:attributeGroup ref="UID"/>
+      <xs:attributeGroup ref="caption"/>
+      <xs:attributeGroup ref="dateStart"/>
+      <xs:attributeGroup ref="dateEnd"/>
+
+      <xs:attribute name="value" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="contraIndications">
+    <xs:annotation>
+      <xs:documentation>Contra-indicaties die in het dossier van de patient zijn vastgelegd. In de waarde wordt meegenomen welke library als bron is gebruikt voor het coderen van de waarde: GStandaard, snomed, etc.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+
+        <xs:element name="GStandaard" minOccurs="0" maxOccurs="unbounded">
+          <xs:annotation>
+            <xs:documentation>Informatie uit de G-standaard in relatie tot het root element. Als het rootelement de "medication" betreft, komen de waarden van de attributes uit de G-standaard.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:attribute name="caption" use="required" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Human-readable informatie van het G-Standaard element Dit is tekst en/of informatie die naar een eindgebruiker kan worden teruggekoppeld. Voorbeelden: "Diabetes Mellitus type II "</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attributeGroup ref="UID"/>
+            <xs:attribute name="CICode" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>G-Standaard contra-indicatie code TSITNR volgens thes. 40 bijv. 137 = Nierfunctie, verminderde 190 = Diabetes Moet worden: INAARD </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="INAARD" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>G-Standaard contra-indicatie code TSITNR volgens thes. 40 </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <!--<xs:attribute name="CIRGrd" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>G-Standaard contra-indicatiegraad
+                </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>-->
+
+            <xs:attributeGroup ref="date"/>
+            <xs:attributeGroup ref="dateStart"/>
+            <xs:attributeGroup ref="dateEnd"/>
+
+            <!--<xs:attribute name="dateStart" type="xs:dateTime">
+              <xs:annotation>
+                <xs:documentation>Startdatum van de contra-indicatie. Deze willen we in de toekomst gaan gebruiken.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="dateEnd" type="xs:dateTime">
+              <xs:annotation>
+                <xs:documentation>Einddatum van de contra-indicatie. Het kan zijn dat een contra-indicatie wordt afgesloten als deze irrelevant is geworden. 
+                  Is wel informatie voor eventuele rules. Denk bijvoorbeeld aan zwangerschap, of obesitas. </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>-->
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element minOccurs="0" name="PharmaBase" maxOccurs="unbounded">
+          <xs:complexType>
+
+            <xs:attribute name="CICode" type="xs:int" use="required"/>
+
+            <!-- references -->
+            <xs:attributeGroup ref="UID"/>
+            <xs:attributeGroup ref="caption"/>
+            <xs:attributeGroup ref="dateStart"/>
+            <xs:attributeGroup ref="dateEnd"/>
+
+          </xs:complexType>
+        </xs:element>
+
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="laboratoryData">
+    <xs:annotation>
+      <xs:documentation>Labwaarden van de patient.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="NHG"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="LOINC"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="NHG">
+    <xs:annotation>
+      <xs:documentation>Informatie uit NHG in relatie tot het root element. Als het rootelement de "laboratorydata" betreft, komen de waarden van de attributes uit de NHG. </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:attributeGroup ref="date"/>
+      <xs:attribute name="id" use="required" type="xs:integer">
+        <xs:annotation>
+          <xs:documentation>NHG id opnemen voor persistente referentie. Als het goed is zal deze niet veranderen in de tijd (volgens de NHG)</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="referralTo" type="xs:string" use="optional"/>
+      <xs:attribute name="memo" use="optional" type="xs:NCName"/>
+      <xs:attribute name="mat" use="optional" type="xs:NCName"/>
+      <xs:attribute name="bijz" use="optional">
+        <xs:simpleType>
+          <xs:restriction base="xs:NCName"> </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="caption" type="xs:string"/>
+      <xs:attribute name="value" use="optional" type="xs:string"/>
+      <!-- <xs:attribute name="value" use="optional" type="xs:float"/> -->
+      <xs:attributeGroup ref="UID"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="LOINC">
+    <xs:annotation>
+      <xs:documentation>LOINC data</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:attribute name="num" use="required"/>
+      <xs:attribute name="caption" type="xs:string"/>
+      <xs:attributeGroup ref="date"/>
+      <xs:attribute name="time" type="xs:time" use="optional"/>
+      <xs:attribute name="value"/>
+      <xs:attributeGroup ref="UID"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="reporter">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="OID" minOccurs="0"/>
+        <xs:element ref="company" minOccurs="0"/>
+        <xs:element ref="address" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="OID" type="xs:string"> </xs:element>
+  <xs:element name="company" type="xs:string"/>
+  <xs:element name="companyType">
+    <xs:annotation>
+      <xs:documentation>Het type bedrijf/instantie: - Apotheek - Huisartsenpraktijk - Ziekenhuis - Verzorgingstehuis <!--
+      TODO! optioneel gemaakt. Wat gaan we hier mee doen? Als het alleen ter info is moeten we het misschien een string van maken (makkelijker voor een XIS).
+      Als we er wel een mogelijke conditie in zien moeten we eens kijken of hier geen officiele classificatie voor is.
+      Bob: mogelijk te gebruiken voor selectie van protocollen die op het systeem van toepassing zijn. We zouden de HL7 id kunnen gebruiken.
+      
+      https://redmine.digitalis.nl/issues/show/245
+
+-->
+      </xs:documentation>
+    </xs:annotation>
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:enumeration value="Apotheek"/>
+        <xs:enumeration value="Huisartenpraktijk"/>
+        <xs:enumeration value="Huisartenpost"/>
+        <xs:enumeration value="Ziekenhuis"/>
+        <xs:enumeration value="Verzorgingstehuis"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+  <xs:element name="address">
+    <xs:annotation>
+      <xs:documentation>Het adres van de desbetreffende instantie: Patient en/of Apotheek, Huisarts etc. afhankelijk van de positie binnen de XML. De informatie wordt alleen gecommuniceerd tussen het XIS en de CR Reporter. En blijft binnnen de grenzen van de zorginstelling.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="streetName" type="xs:string"/>
+        <xs:element name="houseNumber" type="xs:string"/>
+        <xs:element name="postalCode" type="xs:string"/>
+        <xs:element name="city" type="xs:string"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="gender">
+    <xs:annotation>
+      <xs:documentation>Het geslacht van de desbetreffende persoon. Codeert voor het geslacht: F voor vrouw (Female) of M voor Man (Male).
+        
+        https://zibs.nl/wiki/Patient-v3.2(2020NL)#GeslachtCodelijst
+      </xs:documentation>
+    </xs:annotation>
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:enumeration value="F"/>
+        <xs:enumeration value="M"/>
+        <xs:enumeration value="UNK"/>
+        <xs:enumeration value="UN"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+
+  <xs:element name="drug">
+    <xs:annotation>
+      <xs:documentation> Generieke informatie (ATC, DDD, PDD etc) met betrekking tot de medicatie van de patient. Bron-specifieke data wordt apart opgeslagen. </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+
+        <xs:element name="GStandaard" maxOccurs="1">
+          <xs:annotation>
+            <xs:documentation>Informatie uit de G-standaard in relatie tot het root element. Als het rootelement de "medication" betreft, komen de waarden van de attributes uit de G-standaard.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+
+            <xs:attributeGroup ref="caption"/>
+
+            <xs:attribute use="required" name="GPK" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>generiekniveau</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute use="required" name="PRK" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>voorschrijfniveau</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute use="optional" name="HPK" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>handelsproductniveau</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute use="optional" name="ZI" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>artikelnummer in BST0004T </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute use="optional" name="selected">
+              <xs:annotation>
+                <xs:documentation>Geselecteerde niveau binnen Prescriptor EVS</xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="GPK"/>
+                  <xs:enumeration value="PRK"/>
+                  <xs:enumeration value="HPK"/>
+                  <xs:enumeration value="ZI"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attributeGroup ref="UID"/>
+            <!--            <xs:attributeGroup ref="date"/>-->
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element minOccurs="0" maxOccurs="1" name="PharmaBase">
+          <xs:complexType>
+
+            <!-- references -->
+            <xs:attributeGroup ref="BP_required"/>
+            <xs:attributeGroup ref="PP_required"/>
+            <xs:attributeGroup ref="HP_required"/>
+            <xs:attributeGroup ref="PC_required"/>
+
+            <xs:attributeGroup ref="UID"/>
+            <xs:attributeGroup ref="caption"/>
+            <xs:attributeGroup ref="dateStart"/>
+            <xs:attributeGroup ref="dateEnd"/>
+
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element minOccurs="0" name="RVV">
+          <xs:complexType>
+            <xs:attribute name="codeSystem" use="required">
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="ICPC1"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="codeValue" type="xs:string"/>
+          </xs:complexType>
+        </xs:element>
+        <xs:element maxOccurs="1" minOccurs="0" name="supply">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element minOccurs="0" name="gs">
+                <xs:annotation>
+                  <xs:documentation>gs element verwijst naar de G-Standaard. Meestal voorzien van attribute BST, wat staat voor bestandsnaam.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attributeGroup ref="BST"/>
+                  <xs:attribute name="drugcode">
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="GPK"/>
+                        <xs:enumeration value="PRK"/>
+                        <xs:enumeration value="HPK"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                  <xs:attribute name="quantity" type="xs:float"/>
+                  <xs:attribute name="unit">
+                    <xs:annotation>
+                      <xs:documentation>is gelijk aan THITMK van tabel 902</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:minLength value="0"/>
+                        <xs:maxLength value="2"/>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute name="caption">
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="GPK"/>
+                  <xs:enumeration value="PRK"/>
+                  <xs:enumeration value="HPK"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="quantity" type="xs:float"/>
+            <xs:attribute name="unit">
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:minLength value="1"/>
+                  <xs:maxLength value="5"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="codeSystem"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+
+      <xs:attribute name="ATC" use="required">
+        <xs:annotation>
+          <xs:documentation>ATC van een geneesmiddel. Indien een voorschrift geen ATC heeft, zoals een verbandmiddel of een homeopatisch middel, wordt de waarde ZZZZZZ in gevuld.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="7"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+
+      <xs:attribute name="DDD">
+        <xs:annotation>
+          <xs:documentation>DDD = Defined Daily Dose Dit is een gegeven dat per geneesmiddel in de G-Standaard of Snomed DMD library is vastgelegd. Dit is een afgesproken dosering dat voor dit geneesmiddel gebruikelijk zou zijn. Indien een voorschrift geen DDD heeft, zoals een verbandmiddel of een homeopatisch middel, wordt de waarde 0 in gevuld.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:float"/>
+        </xs:simpleType>
+      </xs:attribute>
+
+      <xs:attribute name="directionCoded" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Inname van geneesmiddel zoals gedefineerd volgens tabel25. De Clinical Rules services zou deze gegevens kunnen gebruiken. Voorbeeld: "1d1t"</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="directionCaption" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Inname van geneesmiddel zoals gedefineerd volgens tabel25 in vrij tekst. De Clinical Rules services gebruikt dit verder niet. Het gaat meer om weergave in rapportage. Voorbeeld: "eenmaal daags 1 tablet"</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="dosage" use="optional" type="xs:float">
+        <xs:annotation>
+          <xs:documentation>23-02-2011 Is komen te vervallen, nu supplyQuantity, supplyUnit, doseQuantity, doseUnit </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="date" type="xs:dateTime">
+        <xs:annotation>
+          <xs:documentation>Depreacated in favor of attribute dateStart</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="dateStart" type="xs:dateTime">
+        <xs:annotation>
+          <xs:documentation>Datum wanneer patientkenmerk is vastgelegd. Bijvoorbeeld bij ICPC, contra-indicatieaardcode, allergie, of labwaarde. 
+            Bij //drug/GStandaard is deze informatie niet van toepassing, omdat het element //drug al een date-attribute bevat. </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attributeGroup ref="dateEnd"/>
+      <xs:attribute name="pending" use="optional" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Optioneel, alleen relevant bij het pre-fillen van Prescriptor en voor het gebruik van de medicatiebewaking.
+
+@pending=true betekent dat de voorschrijver de intentie heeft om dit geneesmiddel voor te schrijven. Het recept kan komen uit een lokaal formularium of uit het herhalen van een voorschrift. 
+
+Bij Prescriptor wordt deze informatie gebruik om de receptbuffer van Prescriptor te vullen met 1 of meerdere recepten.
+
+Bij de MedicationSurveillance in de Hub wordt dit gekenmerk gebruikt om het geneesmiddel te identificeren waarop de medicatiebewaking wordt los gelaten in relatie tot de rest van het dossier.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attributeGroup ref="UID"/>
+
+      <xs:attribute name="unit" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>23-02-2011 Is komen te vervallen, is nu supplyUnit en doseUnit geworden</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="supplyQuantity" type="xs:float">
+        <xs:annotation>
+          <xs:documentation>De afgeleverde of af te leveren hoeveelheid. 30 stuks => supplyQuantity=30 supplyUnit=st</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="supplyUnit" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>De afgeleverde of af te leveren hoeveelheid. 30 stuks => supplyQuantity=30 supplyUnit=st</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="doseQuantity" type="xs:float">
+        <xs:annotation>
+          <xs:documentation>De sterkte van het geneesmiddel paracetamol 500 mg => doseQuantiy=500 doseUnit=mg</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="doseUnit" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>De sterkte van het geneesmiddel paracetamol 500 mg => doseQuantiy=500 doseUnit=mg</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="PDD">
+        <xs:annotation>
+          <xs:documentation>PDD = Prescribed Daily Dose Dit is de dosering die berekend wordt aan de hand van de ingevoerde sterkte en doseerschema. Deze waarde wordt berekend en gevuld voordat de informatie naar CRS wordt gestuurd. Indien een voorschrift geen PDD heeft, zoals een verbandmiddel of een homeopatisch middel, wordt de waarde 0 in gevuld.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:float"/>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="medication">
+    <xs:annotation>
+      <xs:documentation>Actuele medicatie van de patient. Dit is vastgelegd in het dossier van de patient. In de waarde wordt meegenomen welke library als bron is gebruikt voor het coderen van de waarde: GStandaard, snomed, etc.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="drug" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element minOccurs="0" name="magistrale">
+          <xs:complexType>
+            <xs:sequence minOccurs="1" maxOccurs="unbounded">
+              <xs:element ref="drug"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!--
+  <xs:element name="laboratory">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="nhglab"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  -->
+  <xs:element name="ZRS">
+    <xs:annotation>
+      <xs:documentation>Zorg Registratie Systeem NOT YET SUPPORTED. Moet nog in overleg met AIS.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="zrsItem">
+          <xs:complexType>
+            <xs:attribute name="id" use="required" type="xs:integer"/>
+            <xs:attribute name="text" use="required" type="xs:NCName"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="label" use="required" type="xs:integer"/>
+      <xs:attribute name="text"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:attributeGroup name="date">
+    <xs:attribute name="date" type="xs:dateTime" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          Datum wanneer patientkenmerk is vastgelegd/is gestart. 
+          Bijvoorbeeld bij ICPC, contra-indicatieaardcode, allergie, of labwaarde. 
+          
+          Bij //drug/GStandaard is deze informatie niet van toepassing, omdat het element //drug al een date-attribute bevat.
+          
+          wordt tzt vervangen door @dateStart
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="dateStart">
+    <xs:attribute name="dateStart" type="xs:dateTime" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          Datum wanneer patientkenmerk is vastgelegd / is gestart. 
+          Bijvoorbeeld bij ICPC, contra-indicatieaardcode, allergie, of labwaarde. 
+          
+          Bij //drug/GStandaard is deze informatie niet van toepassing, omdat het element //drug al een date-attribute bevat.
+          
+          vervangt tzt @date (zie hierboven)
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="dateEnd">
+    <xs:attribute name="dateEnd" type="xs:dateTime" use="optional">
+      <xs:annotation>
+        <xs:documentation>Berekende eind-datum van een voorschrift etc.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="UID">
+    <xs:attribute name="UID" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Deze waarde wordt meegegeven vanuit het XIS. Het is een unieke identifier voor het record binnen de database in het XIS. Hierdoor kan makkelijker een terugkoppeling worden gelegd naar het voorschrift en/of labbepaling die van toepassing is. </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="caption">
+    <xs:attribute name="caption" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Human-readable informatie van het element Dit is tekst en/of informatie die naar een eindgebruiker kan worden teruggekoppeld. Voorbeelden: "Boezemfibrilleren" "Hypertensie" "Allergie voor penicilinen" "Omeprazol 20 mg" "Lanoxin 10 ug" Advies: - Gebruik dezelfde tekst als de tekst die in het dossier wordt gebruikt - Hierdoor sluit de melding aan op het dossier van de gebruiker. </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="GS_optional">
+    <xs:attribute name="GS" type="xs:int" use="optional">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Generieke Stof"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="HP_optional">
+    <xs:attribute name="HP" type="xs:int" use="optional">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Handelsproduct"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="HP_required">
+    <xs:attribute name="HP" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Handelsproduct"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="PP_required">
+    <xs:attribute name="PP" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Prescriptieproduct"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="BP_required">
+    <xs:attribute name="BP" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Basisproduct"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:attributeGroup name="PC_required">
+    <xs:attribute name="PC" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          PharmaBase code voor "Pharmacode"
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:element name="dob">
+    <xs:annotation>
+      <xs:documentation>dob = Date of Birth, oftewel de geboortedatum Dit element heeft een attribute "value" waar de geboortedatum is in opgeslagen in het formaat "YYYY-MM-DD" (jaar-maand-dag).</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:date">
+          <xs:attribute name="months" type="xs:int"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ClinicalRules">
+    <xs:annotation>
+      <xs:documentation>Dit is het vorige Clinical Rules Rapport dat wordt meegestuurd met de patientkenmerken als de CRS wordt benaderd.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="reports" minOccurs="1" maxOccurs="1"/>
+        <!-- [TODO! occurance indicators gewijzigd] -->
+        <xs:element name="triggers" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Onderdeel van de output specificatie, De Clinical Rules Services stuurt een nieuwe set triggers mee op het moment dat de client versie verouderd is. Hierdoor kan de client direct met de nieuwe trigger-tabel aan de slag. Push ipv pull.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence maxOccurs="1" minOccurs="1">
+              <xs:element minOccurs="0" ref="indications"/>
+              <xs:element ref="laboratoryData" minOccurs="0"/>
+              <xs:element ref="medication" minOccurs="0"/>
+            </xs:sequence>
+            <xs:attribute name="version" type="xs:dateTime"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:attributeGroup name="BST">
+    <xs:attribute name="BST">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:minLength value="3"/>
+          <xs:maxLength value="4"/>
+          <xs:pattern value="[0-9][0-9][0-9].{0,1}"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+
+  <xs:element name="CRtrigger">
+    <xs:complexType>
+      <xs:attribute name="date" use="required" type="xs:dateTime"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="reports">
+    <xs:annotation>
+      <xs:documentation>Dit verzameling Clinical Rules reports.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="report" maxOccurs="unbounded">
+          <xs:annotation>
+            <xs:documentation>Technisch gezien is het mogelijk om meerdere "report" elementen toe te voegen. Ze zijn van elkaar te onderscheiden door middel van de verschilende "date" attributes.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element maxOccurs="unbounded" ref="rule" minOccurs="0"/>
+            </xs:sequence>
+            <xs:attribute name="date" use="required" type="xs:dateTime">
+              <xs:annotation>
+                <xs:documentation>Dit is gelijk een identifier voor het report en kan gebruikt worden voor toekomstige referenties</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="activatedRules" type="xs:int" use="required">
+              <xs:annotation>
+                <xs:documentation>Number of rules that has been activated. If value is "0". The Clinical Rules service did not find any relevant protocol .</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="duration" type="xs:string" use="required">
+              <xs:annotation>
+                <xs:documentation>The time is took to process all the triggers and protocols. The time is measured in milliseconds.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="serviceVersion" type="xs:string"/>
+            <xs:attribute name="CRID" type="xs:string"/>
+            <xs:attribute name="durationMS" type="xs:int"/>
+            <xs:attribute name="originalVersion" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>voor testdoeleinden</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="TRIGGERMODE" type="xs:string"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="rule">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:sequence minOccurs="1">
+          <xs:element ref="title"/>
+          <xs:element ref="summary" minOccurs="0"/>
+          <xs:element ref="text" minOccurs="0" maxOccurs="1"/>
+          <xs:element ref="alert"/>
+          <xs:element ref="context"/>
+        </xs:sequence>
+        <xs:element minOccurs="1" ref="actions"/>
+        <xs:element minOccurs="0" ref="references">
+          <xs:annotation>
+            <xs:documentation>Dit zijn referenties naar vorige Clinical Rules reports. Wanneer een XIS eerder contact heeft gemaakt met de Clinical Rules service en er is toentertijd een rapport gegenereerd. Wordt het oude rapport geherevalueerd en eventueel toegevoegd aan het huidige rapport. Als er in het huidige rapport een rule is geactiveerd, zal op deze positie in de xml een referentie gemaakt worden naar het vorige rapport.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <!--
+        Dit zijn referenties naar vorige Clinical Rules reports.
+        -->
+        <xs:element minOccurs="0" name="gs">
+          <xs:annotation>
+            <xs:documentation>gs element verwijst naar de G-Standaard. Meestal voorzien van attribute BST, wat staat voor bestandsnaam.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:attributeGroup ref="BST"/>
+            <xs:attribute name="MFBTHLBL" type="xs:int"/>
+            <xs:attribute name="MFBLBLNR" type="xs:int"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="id" use="required" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Identificatienummer van het CR-protocol. Dit is een uniek nummer waarmee het CR-protocol wordt geidentificeerd binnen CRS.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="version" use="required" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Versie van het CR-protocol. Dit nummer zal verhoogd worden wanneer er een nieuwe versie van het protocol wordt vrijgegeven.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="rule_type" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>depreceated, wordt uiteindelijk @type</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="type">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="RC"/>
+            <xs:enumeration value="PRD"/>
+            <xs:enumeration value="TST"/>
+            <xs:enumeration value="REVIEW"/>
+            <xs:enumeration value="Indice"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ruleSummary">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:sequence minOccurs="1">
+          <xs:element ref="summary"/>
+          <xs:element ref="alert"/>
+        </xs:sequence>
+      </xs:sequence>
+      <xs:attribute name="id" use="required" type="xs:integer">
+        <xs:annotation>
+          <xs:documentation>Identificatienummer van het CR-protocol. Dit is een uniek nummer waarmee het CR-protocol wordt geidentificeerd binnen CRS.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="version" use="required" type="xs:integer">
+        <xs:annotation>
+          <xs:documentation>Versie van het CR-protocol. Dit nummer zal verhoogd worden wanneer er een nieuwe versie van het protocol wordt vrijgegeven.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="title" type="xs:string">
+    <xs:annotation>
+      <xs:documentation>Titel van het CR-protocol. Bijv. "Controle Kaliumspiegel" of "Maagprotectie bij NSAID gebruik"</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+
+  <xs:element name="context">
+    <xs:annotation>
+      <xs:documentation>De context waarop de rapportage is gebaseerd. Dit kunnen labwaarden zijn, medicatie of allergien van de patient.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="allergies" minOccurs="0"/>
+        <!-- <xs:element ref="allergyClasses" minOccurs="0"/>  -->
+        <xs:element ref="medication" minOccurs="0"/>
+        <!--  <xs:element ref="medicationClasses" minOccurs="0"/> -->
+        <xs:element ref="indications" minOccurs="0"/>
+        <xs:element ref="contraIndications" minOccurs="0"/>
+        <!--<xs:element ref="referrals" minOccurs="0"/> parkeren -->
+        <xs:element ref="laboratoryData" minOccurs="0"/>
+        <xs:element minOccurs="0" ref="dob"/>
+        <xs:element minOccurs="0" ref="gender"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="actions">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="message"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="message">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="gs" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:attributeGroup ref="BST"/>
+            <xs:attribute name="TXKODE" type="xs:int"/>
+            <xs:attribute name="TXMODU" type="xs:int"/>
+            <xs:attribute name="TXTSRT" type="xs:int"/>
+          </xs:complexType>
+        </xs:element>
+        <xs:element minOccurs="0" name="caption">
+          <xs:annotation>
+            <xs:documentation>als deze er is, is de titel van de meling specifieker. Anders kan je terug vallen naar /rule/title. </xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element ref="text"/>
+        <xs:element ref="QACs" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="QACID" use="optional" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="QACs">
+    <xs:complexType>
+      <xs:sequence minOccurs="1" maxOccurs="unbounded">
+        <xs:element ref="QAC"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="QAC">
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <!-- <xs:element ref="form" minOccurs="0"/> TODO: in de toekomst moet dit er wel in. Voor MFB's nu niet nodig. -->
+        <xs:element minOccurs="0" name="QACmetadata">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="mandantory"/>
+              <xs:element minOccurs="0" name="caption "/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="ID" use="required" type="xs:string"/>
+      <xs:attribute name="lang">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="nl"/>
+            <xs:enumeration value="en"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="UID"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="references">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="reference" minOccurs="1"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="reference">
+    <xs:annotation>
+      <xs:documentation>Verwijzing naar een eerder CR-rapportage Dit maakt onderdeel uit van de historie van het verloop van het CR-protocol bij de pagina.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="ruleSummary"/>
+      </xs:sequence>
+      <xs:attribute name="reportDate" use="required" type="xs:dateTime">
+        <xs:annotation>
+          <xs:documentation>DateTime verwijst naar report met gelijke DateTime-stamp</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="summary" type="xs:string">
+    <xs:annotation>
+      <xs:documentation>Samenvatting van wat het CR-protocol in houdt Deze tekst wordt door de redactie van CRS opgesteld en zal worden meegestuurd in de rapportage.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+
+  <xs:element name="text">
+    <xs:annotation>
+      <xs:documentation>Uitgebreide informatie over het CR-protocol Meer achtergrond informatie over het CR-protocol</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:any processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="alert">
+    <xs:annotation>
+      <xs:documentation>Alert-niveau van het subrapport van het CR-protocol.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:attribute name="level" use="required">
+        <xs:annotation>
+          <xs:documentation>Deze attribute geeft het niveau van de alert aan. 1 = rood 2 = oranje 3 = groen</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:integer">
+            <xs:enumeration value="1"/>
+            <xs:enumeration value="2"/>
+            <xs:enumeration value="3"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="empty-string">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value=""/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="dateTime-or-nothing">
+    <xs:union memberTypes="xs:dateTime empty-string"/>
+  </xs:simpleType>
+
+  <xs:element name="check">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="function" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:attribute name="title">
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="formularium"/>
+                  <xs:enumeration value="diagnose"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="result" type="xs:boolean"/>
+            <xs:attribute name="source" type="xs:string"/>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="errorCode" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="type">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="rxconform"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="element">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="drug"/>
+            <xs:enumeration value="INAARD"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attributeGroup ref="UID"/>
+      <xs:attribute name="applicable" use="required" type="xs:boolean"/>
+      <xs:attribute name="status" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="OK"/>
+            <xs:enumeration value="NOK"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="Conformity">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="check" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="date"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

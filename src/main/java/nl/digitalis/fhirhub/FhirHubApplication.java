@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 import nl.digitalis.fhirhub.config.PrescriptorProperties;
 import nl.digitalis.fhirhub.gstandaard.GStandaardProperties;
+import nl.digitalis.fhirhub.hub.HubProperties;
 
 /**
  * FHIR R4 interface for two Digitalis applications: Prescriptor, at {@code /fhir/evs}, and
@@ -20,7 +21,7 @@ import nl.digitalis.fhirhub.gstandaard.GStandaardProperties;
  * <p>fhir-hub still holds no session state. The database is a read-only reference lookup.
  */
 @SpringBootApplication
-@EnableConfigurationProperties({ PrescriptorProperties.class, GStandaardProperties.class })
+@EnableConfigurationProperties({ PrescriptorProperties.class, GStandaardProperties.class, HubProperties.class })
 public class FhirHubApplication {
 
 	public static void main(String[] args) {

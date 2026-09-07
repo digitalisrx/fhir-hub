@@ -6,7 +6,7 @@
   "title": "Administrative gender accepted by Prescriptor",
   "description": "Prescriptor's PatientGender has three values — M, F and X — so FHIR's 'other' has no upstream equivalent.",
   "url": "http://spec.digitalis.nl/fhir/ValueSet/patient-gender",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "experimental": false,
   "compose": {
     "include": [

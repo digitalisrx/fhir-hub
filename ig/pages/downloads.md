@@ -3,10 +3,10 @@
 The whole guide as a FHIR NPM package — every profile, extension, value set, code system and
 example, and nothing else:
 
-- **[package.tgz](package.tgz)** — `nl.digitalis.fhirhub#0.2.0`
+- **[package.tgz](package.tgz)** — `nl.digitalis.fhirhub#0.3.0`
 
 That is the file to hand to a validator, a FHIR server or an IG of your own. The versioned copy
-lives at `/fhir/0.2.0/package.tgz` and never changes; the one linked above follows the current
+lives at `/fhir/0.3.0/package.tgz` and never changes; the one linked above follows the current
 release. See [Versioning and change policy](versioning.html) for which of the two you want.
 
 **Fetch it over `https`.** The canonical URLs in the payloads are `http://spec.digitalis.nl/…` —
@@ -38,14 +38,14 @@ Note the two schemes, and that the difference is not a typo: `-ig` is a URL to *
 against what the package declares rather than being downloaded.
 
 Pin the release instead of following it by naming the versioned package —
-`-ig https://spec.digitalis.nl/fhir/0.2.0/package.tgz` — or by downloading the tarball and
+`-ig https://spec.digitalis.nl/fhir/0.3.0/package.tgz` — or by downloading the tarball and
 pointing `-ig` at the local file, which is also what to do on a machine without outbound network
 access.
 
 **Do not rely on network resolution alone.** A validator that cannot fetch a profile reports it
 as *not checked* rather than as a failure, so a run that resolved nothing still ends in a green
 `0 errors`. Load the package explicitly, as above, and confirm the validator logs
-`Load nl.digitalis.fhirhub#0.2.0` before you believe the result.
+`Load nl.digitalis.fhirhub#0.3.0` before you believe the result.
 
 ### Warnings you should expect
 

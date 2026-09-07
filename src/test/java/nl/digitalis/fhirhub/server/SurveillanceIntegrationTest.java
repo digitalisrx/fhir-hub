@@ -1,5 +1,9 @@
 package nl.digitalis.fhirhub.server;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -11,47 +15,56 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 
+import org.hl7.fhir.r4.model.AllergyIntolerance;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CapabilityStatement;
 import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestComponent;
 import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestResourceOperationComponent;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.DetectedIssue;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.MedicationRequest;
+import org.hl7.fhir.r4.model.MedicationStatement;
 import org.hl7.fhir.r4.model.OperationDefinition;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.StringType;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import nl.digitalis.fhirhub.Fixtures;
 import nl.digitalis.fhirhub.fhir.Profiles;
 import nl.digitalis.fhirhub.fhir.Systems;
 
 /**
- * The medication-surveillance base, over real HTTP.
+ * The medication-surveillance base, over real HTTP, with the Digitalis Hub stubbed.
  *
- * <p>Everything here is about a contract that is published and <em>not implemented</em>, which is
- * an unusual thing to pin and the reason it needs pinning. Three claims the published guide makes
- * would otherwise be untested: that the two bases are separate contracts and neither advertises
- * the other's operations, that a conformant request is refused with a status no client can mistake
- * for a result, and that the request profile is enforced today so an integrator can build against
- * it before the check exists.
- *
- * <p>No WireMock: this operation reaches nothing upstream, which is the whole point.
+ * <p>What needs pinning here is what unit tests cannot see: that a conformant request reaches the
+ * Hub carrying the credentials and the marks that decide which drug is checked, that the report
+ * comes back as a Bundle of DetectedIssue, that <strong>every</strong> way for the check not to
+ * run is an error rather than an empty result, that the request profile is enforced, and that
+ * neither base advertises the other's operations.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SurveillanceIntegrationTest {
 
 	private static final HttpClient CLIENT = HttpClient.newHttpClient();
+
+	private static WireMockServer hub;
 
 	@Autowired
 	private FhirContext fhirContext;
@@ -61,53 +74,165 @@ class SurveillanceIntegrationTest {
 
 	private IParser parser;
 
+	@BeforeAll
+	static void startHub() {
+		hub = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+		hub.start();
+	}
+
+	@AfterAll
+	static void stopHub() {
+		hub.stop();
+	}
+
+	@DynamicPropertySource
+	static void hubUrl(DynamicPropertyRegistry registry) {
+		registry.add("hub.target-url", () -> hub.baseUrl() + "/call/");
+	}
+
 	@BeforeEach
-	void parser() {
+	void reset() {
+		hub.resetAll();
 		parser = fhirContext.newJsonParser();
 	}
 
-	/**
-	 * The 501 is the contract. An empty Bundle of findings would be indistinguishable from a
-	 * genuine all-clear, so a caller has to be given a status it cannot read as a result — and the
-	 * issue code has to carry it too, because the change policy lets the wording move in a patch.
-	 */
 	@Test
-	void refusesAConformantRequestWithANotImplementedOutcome() {
+	void returnsTheReportAsABundleOfDetectedIssues() {
+		stub("medication-surveillance-response.xml");
+
 		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
 				surveillanceParameters());
 
-		assertThat(response.statusCode()).isEqualTo(501);
+		assertThat(response.statusCode()).isEqualTo(200);
 
-		OperationOutcome outcome = parser.parseResource(OperationOutcome.class, response.body());
-		assertThat(outcome.getIssueFirstRep().getCode()).isEqualTo(OperationOutcome.IssueType.NOTSUPPORTED);
-		assertThat(outcome.getIssueFirstRep().getDiagnostics())
-				.as("the response says outright that nothing may be concluded from it")
-				.contains("not yet implemented")
-				.contains("No conclusion");
+		Bundle bundle = parser.parseResource(Bundle.class, response.body());
+		assertThat(bundle.getEntry()).hasSize(3);
+		assertThat(bundle.getIdentifier().getValue()).isEqualTo("83327A6E-FAED-4448-A20E-EFEA660C7627");
+
+		DetectedIssue first = (DetectedIssue) bundle.getEntryFirstRep().getResource();
+		assertThat(first.getSeverity()).isEqualTo(DetectedIssue.DetectedIssueSeverity.HIGH);
+		assertThat(first.getCode().getText()).isEqualTo("Nierfunctie: metformine");
+		assertThat(first.getDetail()).contains("lactaatacidose");
 	}
 
 	/**
-	 * The reason the request profile is enforced on an operation that cannot succeed: a host can
-	 * find out its payload is wrong now rather than on the day the check goes live. A 400 and a
-	 * 501 are different answers and both are useful.
+	 * The request the Hub receives. Two attributes on the proposed drug decide which of the two
+	 * engines behind that one call looks at it, the credentials have to arrive from the HTTP layer,
+	 * and the current medication has to arrive resolved to the PRK + GPK pair with its ATC — a
+	 * request missing any of them still gets a plausible-looking answer.
 	 */
 	@Test
-	void validatesTheRequestEvenThoughTheOperationDoesNothing() {
+	void sendsAWellFormedDigitalisRxDocumentCarryingTheCredentials() {
+		stub("medication-surveillance-response.xml");
+
+		postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+
+		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+		assertThat(sent)
+				.contains("<MedicationSurveillance xmlns=\"http://hub.digitalis.nl/call\">")
+				.contains("organisationUnitId=\"practice-123\"")
+				.contains("key=\"license-key\"")
+				.contains("pending=\"true\"")
+				.contains("trigger=\"true\"")
+				// The proposal, resolved: PRK 18996 is the paracetamol zetpil in the stand-in view.
+				.contains("PRK=\"18996\" GPK=\"111111\"")
+				.contains("ATC=\"N02BE01\"")
+				// And the standing dossier, which is what it is weighed against.
+				.contains("pending=\"false\"")
+				.contains("PRK=\"43800\" GPK=\"222222\" HPK=\"2106\"")
+				// The host's own wording and record id, all the way from Coding.display and
+				// AllergyIntolerance.id to the attributes the Hub writes into its signal.
+				.contains("<GStandaard SNK=\"10499\" caption=\"TALK\" UID=\"allergy-1\"");
+	}
+
+	/**
+	 * A report that ran and found nothing. This is the only 200 with an empty Bundle the contract
+	 * can produce, and the test below is the reason it has to be pinned separately.
+	 */
+	@Test
+	void returnsAnEmptyBundleWhenTheCheckRanAndNothingFired() {
+		stub("empty-report-response.xml");
+
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
+				surveillanceParameters());
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(parser.parseResource(Bundle.class, response.body()).getEntry()).isEmpty();
+	}
+
+	/**
+	 * And every way for the check <em>not</em> to run is a 500 with an OperationOutcome. An empty
+	 * Bundle cannot be told apart from a genuine all-clear by a prescriber who sent a medication
+	 * list, so nothing that failed may answer with one — the same false negative that makes an
+	 * unresolvable drug code a 400 rather than a dropped drug.
+	 */
+	@Test
+	void refusesToTurnAFailedCheckIntoAnAllClear() {
+		hub.stubFor(post(anyUrl()).willReturn(aResponse()
+				.withStatus(500)
+				.withHeader("Content-Type", "text/xml")
+				.withBody(Fixtures.hubXml("fault-response.xml"))));
+
+		HttpResponse<String> fault = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		assertThat(fault.statusCode()).isEqualTo(500);
+		assertThat(diagnostics(fault)).contains("could not be run");
+
+		hub.resetAll();
+		stub("no-report-response.xml");
+
+		HttpResponse<String> noReport = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		assertThat(noReport.statusCode()).isEqualTo(500);
+		assertThat(diagnostics(noReport)).contains("no report");
+
+		hub.resetAll();
+		hub.stubFor(post(anyUrl()).willReturn(aResponse().withStatus(502).withBody("<html>Bad Gateway</html>")));
+
+		HttpResponse<String> garbage = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		assertThat(garbage.statusCode()).isEqualTo(500);
+		assertThat(diagnostics(garbage)).contains("no conclusion may be drawn");
+	}
+
+	/**
+	 * The G-Standaard lookup fails closed here exactly as it does for a session: a code the
+	 * G-Standaard has no product for aborts the check rather than dropping the drug out of it.
+	 */
+	@Test
+	void refusesADrugTheGStandaardCannotResolve() {
+		stub("medication-surveillance-response.xml");
+
+		Parameters in = surveillanceParameters();
+		((MedicationStatement) resource(in, "medicationStatement"))
+				.getMedicationCodeableConcept().getCodingFirstRep().setCode("404404");
+
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		assertThat(diagnostics(response)).contains("G-Standaard has no product for HPK 404404");
+		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
+	}
+
+	/**
+	 * The request profile is enforced before anything is sent, so an integrator gets every problem
+	 * in one OperationOutcome and nothing reaches the Hub until the body conforms.
+	 */
+	@Test
+	void validatesTheRequestBeforeCallingUpstream() {
 		Parameters in = surveillanceParameters();
 		in.getParameter().removeIf(p -> "xisId".equals(p.getName()));
 
 		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
 
 		assertThat(response.statusCode()).isEqualTo(400);
-		OperationOutcome outcome = parser.parseResource(OperationOutcome.class, response.body());
-		assertThat(outcome.getIssueFirstRep().getDiagnostics()).contains("xisId");
+		assertThat(diagnostics(response)).contains("xisId");
+		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
 	}
 
 	/** Neither a prescription to check nor a medication list to check it against. */
 	@Test
 	void refusesARequestWithNothingToCheck() {
 		Parameters in = surveillanceParameters();
-		in.getParameter().removeIf(p -> "prescription".equals(p.getName()));
+		in.getParameter().removeIf(p -> "prescription".equals(p.getName())
+				|| "medicationStatement".equals(p.getName()));
 
 		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
 
@@ -159,10 +284,9 @@ class SurveillanceIntegrationTest {
 	}
 
 	/**
-	 * The generated {@code OperationDefinition} is most of what makes an unimplemented operation
-	 * worth publishing: it is the parameter list an integrator can generate a request from, and
-	 * the published guide names both its address and its contents. Readable unauthenticated, like
-	 * the statement that advertises it.
+	 * The generated {@code OperationDefinition} is the parameter list an integrator can generate a
+	 * request from, and the published guide names both its address and its contents. Readable
+	 * unauthenticated, like the statement that advertises it.
 	 */
 	@Test
 	void describesItsParametersInAnOperationDefinitionAnyoneCanRead() {
@@ -192,16 +316,23 @@ class SurveillanceIntegrationTest {
 
 		// No `use: out` parameter, which is HAPI's doing rather than a decision here — the two
 		// session operations describe their responses the same way, which is to say not at all.
-		// The response shape lives in the profiles, and surveillance has none yet.
+		// The response shape lives in the Implementation Guide; no profile is published for it.
 	}
 
 	/** The profile is the one the service names in its refusal, so an integrator can go read it. */
 	@Test
 	void namesTheProfileItValidatedAgainst() {
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
-				surveillanceParameters());
+		Parameters in = surveillanceParameters();
+		in.getParameter().removeIf(p -> "xisVersion".equals(p.getName()));
 
-		assertThat(response.body()).contains(Profiles.SURVEILLANCE_INPUT);
+		assertThat(postFhir("/fhir/surveillance/$check-medication", in).body())
+				.contains(Profiles.SURVEILLANCE_INPUT);
+	}
+
+	private void stub(String fixture) {
+		hub.stubFor(post(anyUrl()).willReturn(aResponse()
+				.withHeader("Content-Type", "text/xml; charset=utf-8")
+				.withBody(Fixtures.hubXml(fixture))));
 	}
 
 	private List<String> operationNames(CapabilityStatement statement) {
@@ -212,9 +343,23 @@ class SurveillanceIntegrationTest {
 				.toList();
 	}
 
+	private String diagnostics(HttpResponse<String> response) {
+		return parser.parseResource(OperationOutcome.class, response.body())
+				.getIssueFirstRep().getDiagnostics();
+	}
+
+	private org.hl7.fhir.r4.model.Resource resource(Parameters parameters, String name) {
+		return parameters.getParameter().stream()
+				.filter(p -> name.equals(p.getName()))
+				.findFirst()
+				.orElseThrow()
+				.getResource();
+	}
+
 	/**
 	 * The payload of the published example, minus the resources that are identical to the session
-	 * ones: a patient, the two identifying strings and one prescription to check.
+	 * ones: a patient, the two identifying strings, one prescription to check and one entry of
+	 * standing medication to check it against.
 	 */
 	private Parameters surveillanceParameters() {
 		Patient patient = new Patient();
@@ -222,18 +367,42 @@ class SurveillanceIntegrationTest {
 		patient.setBirthDateElement(new DateType("1980-01-01"));
 
 		MedicationRequest prescription = new MedicationRequest();
+		prescription.setId("rx-1");
 		prescription.setStatus(MedicationRequest.MedicationRequestStatus.ACTIVE);
 		prescription.setIntent(MedicationRequest.MedicationRequestIntent.ORDER);
 		prescription.setSubject(absentReference());
 		prescription.getMedicationCodeableConcept().addCoding()
 				.setSystem(Systems.PRK)
-				.setCode("18996");
+				.setCode("18996")
+				.setDisplay("PARACETAMOL ZETPIL 1000MG");
+
+		MedicationStatement statement = new MedicationStatement();
+		statement.setId("ms-1");
+		statement.setStatus(MedicationStatement.MedicationStatementStatus.ACTIVE);
+		statement.setSubject(absentReference());
+		statement.getMedicationCodeableConcept().addCoding()
+				.setSystem(Systems.HPK)
+				.setCode("2106")
+				.setDisplay("OXYCODON HCL TABLET 5MG");
+
+		AllergyIntolerance allergy = new AllergyIntolerance();
+		allergy.setId("allergy-1");
+		allergy.setPatient(absentReference());
+		allergy.getClinicalStatus().addCoding()
+				.setSystem("http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical")
+				.setCode("active");
+		allergy.getCode().addCoding()
+				.setSystem(Systems.G_STANDAARD_SNK)
+				.setCode("10499")
+				.setDisplay("TALK");
 
 		Parameters parameters = new Parameters();
 		parameters.addParameter().setName("patient").setResource(patient);
 		parameters.addParameter().setName("xisId").setValue(new StringType("xis-001"));
 		parameters.addParameter().setName("xisVersion").setValue(new StringType("1.0"));
 		parameters.addParameter().setName("prescription").setResource(prescription);
+		parameters.addParameter().setName("medicationStatement").setResource(statement);
+		parameters.addParameter().setName("allergyIntolerance").setResource(allergy);
 
 		return parameters;
 	}

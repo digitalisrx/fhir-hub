@@ -172,8 +172,8 @@
     "fshName": "FhirHubSurveillanceInput",
     "fshType": "Profile",
     "fshFile": "profiles-surveillance.fsh",
-    "startLine": 28,
-    "endLine": 100
+    "startLine": 31,
+    "endLine": 105
   },
   {
     "outputFile": "ValueSet-allergy-causative-agent.json",

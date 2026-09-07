@@ -5,10 +5,10 @@ One FHIR R4 interface in front of **two distinct Digitalis applications**, on tw
 | | | |
 | --- | --- | --- |
 | **Prescriptor** | `/fhir/evs` | Prescribing, in Prescriptor's own UI. Session-based: open, hand the browser over, collect the result. Functionally equivalent to **v2** of the JSON interface in `../json-interface`, with one deliberate difference — **authentication has moved out of the message body and onto the HTTP layer** |
-| **Surveillance** | `/fhir/surveillance` | Medication surveillance on its own, asked as a question and answered in the payload. **Published and not implemented**: a conformant request is a 501 — see *A second base for medication surveillance* below |
+| **Surveillance** | `/fhir/surveillance` | Medication surveillance on its own, asked as a question and answered in the payload. Both halves of it — the G-Standaard's beslisregels and the classic checks — through the Digitalis Hub. See *A second base for medication surveillance* below |
 
 Everything below this line is about Prescriptor unless it says otherwise, because that is the
-contract that works.
+larger contract and the one with a JSON-API predecessor.
 
 Like its predecessor it is a stateless proxy: it accepts FHIR, translates to the XML-RPC
 dialect Prescriptor speaks, and translates the answer back. No session state and no credential
@@ -32,11 +32,12 @@ GET    /fhir/evs/$session-result?session=  ->  Bundle (MedicationRequest, Commun
 GET    /fhir/evs/metadata                  ->  CapabilityStatement (unauthenticated)
 ```
 
-A second FHIR base carries the medication-surveillance contract, which is **published and not
-implemented** — see *A second base for medication surveillance* below:
+A second FHIR base carries the medication-surveillance contract — see *A second base for
+medication surveillance* below. It talks to a different upstream (the Digitalis Hub, over SOAP)
+and shares everything else:
 
 ```
-POST   /fhir/surveillance/$check-medication   Parameters  ->  501 Not Implemented
+POST   /fhir/surveillance/$check-medication   Parameters  ->  Bundle (DetectedIssue)
 GET    /fhir/surveillance/metadata            ->  CapabilityStatement (unauthenticated)
 ```
 
@@ -269,18 +270,35 @@ UI. `POST /fhir/surveillance/$check-medication` asks the same question directly 
 and one or more proposed prescriptions in, the signals that fire out — with no session, no browser
 round trip and nothing to poll.
 
-**It is not implemented.** A conformant request is answered with 501 and an `OperationOutcome`
-whose `issue.code` is `not-supported`; a malformed one still gets the 400 its profile produces.
-What exists is the contract: `fhirhub-SurveillanceInput`, the generated `OperationDefinition`, the
-CapabilityStatement entry and a page in the published guide. Publishing it before building it is
-the point — the payload can be reviewed and built against while it is still cheap to change the
-shape.
+**The upstream is the Digitalis Hub** (`../hub`, `https://hub.digitalis.nl/call/`), a SOAP service
+that runs both halves of Dutch medication surveillance and merges them into one report: the
+G-Standaard's medisch-farmaceutische beslisregels through the clinical-rules engine, and the
+classic allergy, age, duplicate-medication and dose checks through the G-Standaard service. The
+request is a complete `DigitalisRx` document in the SOAP body — the same schema the session
+contract embeds in a CDATA section, written by a second builder because what each upstream reads
+out of it differs as much as the envelope does. The report comes back as a `Bundle` of
+`DetectedIssue`, one entry per signal.
 
-Three decisions are recorded in `SurveillanceOperationProvider`'s Javadoc rather than here, because
-they are what the next person needs: why the stub answers 501 rather than an empty Bundle of
-findings, which upstream it will call (`prescriptor-api`'s `mb/` package or the Clinical Rules
-Engine directly, and what that does to the credential story), and why no response profile is
-published yet.
+`hub/MedicationSurveillanceRequestBuilder` is where the attributes that decide what gets checked
+are documented, and there are four of them that fail as silence rather than as an error:
+`pending` (the Hub's own checks do not run at all without it), `trigger` (the rules engine reads
+this one instead), `date` (both engines filter the dossier on it) and `ATC` (most beslisregels
+select on it, which is why `MedicationCodeResolver` now reads it). Two published examples each
+carry one of the first two, which is how the split was found.
+
+**An empty Bundle can only mean the check ran and nothing fired.** Every other outcome —
+unreachable, refused, or a response with no report in it — is a 500, enforced in
+`MedicationSurveillanceResponseParser`. That is the same rule as the 400 on an unresolvable drug
+code, and it is why this operation answered 501 for a release rather than "no issues found".
+
+**Three gaps are known and documented for integrators** in the guide, because each is a rule that
+stays silent: no PDD or DDD is sent, so dose rules comparing the two cannot fire; weight and height
+travel as LOINC and the Hub's dose check reads them from NHG-coded elements this interface does not
+send yet, which surfaces as a "data missing" signal rather than a pass; and nothing distinguishes a
+partial answer from a complete one, because the upstream does not say. **And the Hub does not
+adjudicate the credentials** — it overwrites the licence in the payload with its own before calling
+the engine — so unlike a session, a wrong practice id is not rejected upstream. `HubClient` records
+that; closing it is a deployment or a product decision, not a code one.
 
 **A second base rather than a second service**, and a second base rather than a path under
 `/fhir/evs`. FHIR reserves the path space under a base for resource type names, so a second
@@ -555,14 +573,25 @@ Changing them alters clinical behaviour and needs its own decision.
   (`ValueSet = <root>.48.1…`), so it survives a wipe unchanged only while the set of artifacts
   does. Adopting it therefore needs the file kept outside `fsh-generated` and restored before the
   publisher runs, the way `stamp-version.mjs` restores the version.
-- **Implement `$check-medication`, or withdraw it.** The endpoint, its request profile and its
-  page in the published guide exist; the check behind it does not, and it answers 501. Blocking
-  questions, in the order they have to be answered: the safety classification (above), which
-  upstream serves it, whether the credentials on that upstream are still Prescriptor's to
-  validate — the answer decides whether this service can stay free of a credential store — and
-  what `DetectedIssue` carries. A published operation that answers 501 for a release or two is
-  honest; one that does so indefinitely is clutter, and the change policy allows removing it while
-  the guide is `draft`.
+- **Decide how `/fhir/surveillance` is authenticated.** The Hub overwrites the licence in the
+  payload with its own before it calls the rules engine and checks nothing else, so this base
+  currently accepts any well-formed Basic header — where a session is adjudicated by Prescriptor
+  and answers 401. Three ways out: a credential check in the Hub, a validating call to Prescriptor
+  from this service (which costs a round trip per check), or a deployment restriction in front of
+  the base. The first keeps this service free of a credential store, which is the property worth
+  protecting.
+- **Publish a response profile for `$check-medication`, once the shape has been reviewed against
+  real reports.** The guide describes the Bundle and the `DetectedIssue` elements in prose and
+  asserts no `meta.profile`, which is honest for a shape a week old and is not where it should
+  stay. What to settle first: whether `DetectedIssue.code` should carry a coding for the class of
+  check (a Digitalis code system for `mfb` / `allergy` / `dosage` / `double-medication` / `age`
+  would make the answer routable), and whether the rule text should also travel as a sanitised
+  XHTML narrative rather than only as plain text in `detail`.
+- **Close the three gaps in what the check covers**: PDD and DDD (which needs Tabel 25 decoded, so
+  it is the expensive one), weight and height reaching dose control (which needs the NHG element
+  the Hub reads, and a decision about metres versus centimetres — the Hub's BSA formula multiplies
+  the length it finds by 100), and a way to tell a partial report from a complete one, which has
+  to come from the Hub.
 - **A sandbox for integrator self-testing.** `../tests-digitalisrx-testpatients` is the
   natural seed.
 - **No resource sets `meta.profile`.** `fhir/Profiles.java` holds the canonicals and the

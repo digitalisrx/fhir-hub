@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A report that ran and found nothing. The one response that may be returned as an empty
+     Bundle, and the reason the file above exists beside it. -->
+<ns0:Envelope xmlns:ns0="http://schemas.xmlsoap.org/soap/envelope/">
+    <ns0:Body>
+        <ns1:MedicationSurveillanceResponse xmlns:ns1="http://hub.digitalis.nl/call">
+            <ns1:asDigitalisRx>
+                <ns2:DigitalisRx xmlns:ns2="http://digitalis.nl/schema/DigitalisRx">
+                    <ns2:ClinicalRules>
+                        <ns2:reports>
+                            <ns2:report activatedRules="0" serviceVersion="2.3.20260509.1129"
+                                    date="2026-09-07T11:11:16" CRID="0EA8D2C1-0000-4448-A20E-EFEA660C7627"
+                                    duration="0" durationMS="12"/>
+                        </ns2:reports>
+                    </ns2:ClinicalRules>
+                </ns2:DigitalisRx>
+            </ns1:asDigitalisRx>
+        </ns1:MedicationSurveillanceResponse>
+    </ns0:Body>
+</ns0:Envelope>

@@ -14,6 +14,7 @@ import nl.digitalis.fhirhub.model.MedicationCodes;
 import nl.digitalis.fhirhub.model.PatientContext;
 import nl.digitalis.fhirhub.model.PrescriptorCredentials;
 import nl.digitalis.fhirhub.model.SessionRequest;
+import nl.digitalis.fhirhub.xml.XmlWriter;
 
 /** Builds the XML-RPC method calls Prescriptor expects. */
 @Component

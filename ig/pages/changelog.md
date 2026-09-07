@@ -4,6 +4,49 @@ Every release of this guide, newest first. What a version number promises is in
 Each entry names the version, the date it was published, and every change grouped by whether it
 can affect a payload you already send. A release with no **Breaking** heading broke nothing.
 
+### 0.3.0 — medication surveillance answers
+
+`draft`, 2026-09-07. **Nothing breaks.** Every request accepted at 0.2.0 is accepted unchanged and
+the request profile did not move a single element. What changed is the answer:
+`POST /fhir/surveillance/$check-medication` no longer returns 501.
+
+**The check is real.** A conformant request is now weighed by both halves of Dutch medication
+surveillance and the signals come back in the response:
+
+- the G-Standaard's **medisch-farmaceutische beslisregels**, through the clinical-rules engine —
+  interactions, contra-indications, nierfunctie, and the rest
+- the **classic G-Standaard checks** — allergy, age as a contra-indication, duplicate medication,
+  and dose control against the dose bands
+
+**What you get back** is a `Bundle` (`type: collection`) of `DetectedIssue`, one per signal, in the
+order the report listed them. Per finding: `severity` (`high`, `moderate`, `low` for the rules
+engine's red, orange and green), `code.text` — the rule's own title — `detail` with the rule's full
+text, `evidence` with the codes and lab values the rule read, `implicated` pointing back at the
+records you sent by the `id` you gave them, and `identifier` carrying the rule's own id.
+`Bundle.identifier` carries the report id, which is what Digitalis support asks for. See
+[`POST /fhir/surveillance/$check-medication`](check-medication.html) for the whole shape and for the
+three things it does not cover yet.
+
+**An empty Bundle means the check ran and nothing fired.** Nothing else can produce one: every way
+for the check not to happen — an unreachable upstream, a refusal, a report that did not come back —
+is a 500 with an `OperationOutcome`, never a 200 with no findings. That is the same rule that makes
+an unresolvable drug code a 400 rather than a dropped drug, and it is why this endpoint spent a
+release answering 501 rather than "no issues found".
+
+**Set `id` on the resources you send.** It comes back on `DetectedIssue.implicated` as the
+identifier of the record a signal is about, which is what lets you show the signal against the right
+row instead of matching on codes. Without one you get a positional identifier that is stable only
+within the request.
+
+**Still `experimental`, and now that is about the response.** The request profile has been enforced
+since 0.2.0 and is unchanged; the response has existed for days. The severity mapping and how a
+rule's text arrives are the parts that may still move, and there is deliberately **still no response
+profile** — the shape is described in the guide until it has been reviewed against real reports.
+
+**The version number moved for a contract you may not use.** One release covers both bases — see
+[Versioning and change policy](versioning.html) — so an EVS-only integrator reads 0.3.0 in
+`GET /fhir/evs/metadata` and has nothing to do about it. Nothing on the EVS contract changed.
+
 ### 0.2.0 — medication surveillance, published and not implemented
 
 `draft`, 2026-09-02. **Nothing breaks.** Every request accepted at 0.1.0 is accepted unchanged, and

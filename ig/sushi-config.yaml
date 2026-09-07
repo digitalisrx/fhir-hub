@@ -11,7 +11,7 @@ name: DigitalisFhirHub
 title: "Digitalis fhir-hub Implementation Guide"
 description: "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication request contract is published but not yet implemented."
 status: draft
-version: 0.2.0
+version: 0.3.0
 fhirVersion: 4.0.1
 copyrightYear: 2026+
 releaseLabel: Draft
@@ -86,7 +86,9 @@ pages:
 # One menu group per application, because they are two contracts on two FHIR bases and a reader
 # is integrating with one of them, not with "the interface". Everything outside those two groups
 # is shared by both. "(preview)" belongs in the menu rather than only on the page it labels: a
-# reader has to be able to see that the application does not work yet before they click into it.
+# reader has to be able to see that the response shape is not final before they click into it. The
+# request contract is not a preview and has not changed since 0.2.0 — it is the answer that is
+# young, and there is no profile for it yet.
 menu:
   Home: index.html
   Getting started:

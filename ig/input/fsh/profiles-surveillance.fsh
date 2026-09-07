@@ -1,15 +1,18 @@
 // The medication-surveillance contract, served on its own FHIR base at /fhir/surveillance.
 //
-// THE OPERATION IS NOT IMPLEMENTED. A conformant request is answered with 501; see
-// server/SurveillanceOperationProvider.java for why it is not a 200 with an empty result. What
-// is published here is the request contract, so that a host can build and validate the payload,
-// and so the shape can be reviewed before the rules engine behind it is wired up. Everything in
-// this file is therefore `experimental = true`: it may be used to test against and not to
-// conclude anything from.
+// THE OPERATION IS IMPLEMENTED as of 0.3.0: the request is mapped to a DigitalisRx document, sent
+// to the Digitalis Hub, and the clinical-rules report that comes back is returned as a Bundle of
+// DetectedIssue. Before that it answered 501, and the request contract published here is the one
+// it answered 501 against — unchanged, which is what publishing it early was for.
 //
-// There is deliberately NO RESPONSE PROFILE. DetectedIssue is where this is heading, but a
-// profile with nothing behind it is a promise this service cannot keep, and publishing one would
-// invite a host to build against a shape nobody has produced a single instance of.
+// It is still `experimental = true`, and that is about the RESPONSE rather than this profile. What
+// a host sends has been enforced for a release; what it gets back has existed for days. The
+// severity mapping, how a rule's own text arrives, and what a partial answer would look like are
+// the parts that may still move.
+//
+// There is deliberately still NO RESPONSE PROFILE. A profile is a promise, and the shape of the
+// response is described in the Implementation Guide instead until it has been reviewed against
+// real reports. Publishing one now would invite a host to bind to a shape that is a week old.
 //
 // Note what this file does NOT contain: profiles for Patient, MedicationStatement,
 // AllergyIntolerance, Condition, Observation or the prescription. Those are the same resources
@@ -29,10 +32,12 @@ Profile: FhirHubSurveillanceInput
 Parent: Parameters
 Id: fhirhub-SurveillanceInput
 Title: "$check-medication input"
-Description: "The body of POST /fhir/surveillance/$check-medication: the patient's context plus the prescriptions to check against it. PUBLISHED BUT NOT IMPLEMENTED — a conformant request is answered with 501 Not Implemented, and no conclusion about a patient's medication may be drawn from it."
+Description: "The body of POST /fhir/surveillance/$check-medication: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue."
 * ^status = #draft
 // Not decoration: `experimental` is the FHIR-native way to say "test against this, do not rely
-// on it". The service enforces the profile today; the operation behind it does nothing.
+// on it". It is kept because the response shape may still move, not because the request one is
+// in doubt — this profile has been enforced since 0.2.0 and did not change when the operation
+// behind it was implemented.
 * ^experimental = true
 * obeys fhirhub-something-to-check
 // Closed, for the same reason the session requests are: this interface would ignore a parameter

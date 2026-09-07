@@ -2,7 +2,7 @@
   "resourceType": "ImplementationGuide",
   "id": "nl.digitalis.fhirhub",
   "url": "http://spec.digitalis.nl/fhir/ImplementationGuide/nl.digitalis.fhirhub",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "DigitalisFhirHub",
   "title": "Digitalis fhir-hub Implementation Guide",
   "status": "draft",
@@ -49,7 +49,7 @@
           "reference": "StructureDefinition/fhirhub-SurveillanceInput"
         },
         "name": "$check-medication input",
-        "description": "The body of POST /fhir/surveillance/$check-medication: the patient's context plus the prescriptions to check against it. PUBLISHED BUT NOT IMPLEMENTED — a conformant request is answered with 501 Not Implemented, and no conclusion about a patient's medication may be drawn from it.",
+        "description": "The body of POST /fhir/surveillance/$check-medication: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue.",
         "exampleBoolean": false
       },
       {

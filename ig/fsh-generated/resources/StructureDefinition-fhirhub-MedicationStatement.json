@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-MedicationStatement",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-MedicationStatement",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubMedicationStatement",
   "title": "fhir-hub MedicationStatement",
   "status": "draft",

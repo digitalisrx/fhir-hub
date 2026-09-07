@@ -97,6 +97,33 @@ public final class Systems {
 	public static final String G_STANDAARD_BIJZONDER_KENMERK =
 			"http://spec.digitalis.nl/fhir/CodeSystem/gstandaard-bijzonder-kenmerk";
 
+	/**
+	 * The clinical-rules service's own report id — the {@code CRID} — as the identifier system of
+	 * the Bundle a medication-surveillance check returns.
+	 *
+	 * <p>Two identifier systems are Digitalis-local for the same reason the one above is: nothing
+	 * is registered for either, and both name something the upstream assigns rather than a
+	 * terminology anybody publishes. They are {@code /sid/} rather than {@code /CodeSystem/}
+	 * because that is what FHIR calls the namespace of an identifier as opposed to a code.
+	 *
+	 * <p>This one is worth carrying: it is what Digitalis support asks for when a prescriber
+	 * queries a signal, and it is the only handle that ties a response to the run that produced
+	 * it.
+	 */
+	public static final String CRS_REPORT = "http://spec.digitalis.nl/fhir/sid/crs-report";
+
+	/**
+	 * The identifier system of one rule: {@code MFB-0000000068-v000006} for a
+	 * medisch-farmaceutische beslisregel, {@code hub-doublemedication-prkA-1090} and its siblings
+	 * for the G-Standaard checks the Hub runs itself.
+	 *
+	 * <p>An identifier and not a {@code Coding}, deliberately. The set is open — a beslisregel is
+	 * published, revised and withdrawn by the G-Standaard's editors on their own schedule — so
+	 * there is no code system anyone could define here that would not be out of date, and
+	 * {@code DetectedIssue.identifier} is what FHIR has for "the id the source gave this".
+	 */
+	public static final String CRS_RULE = "http://spec.digitalis.nl/fhir/sid/crs-rule";
+
 	private Systems() {
 	}
 }

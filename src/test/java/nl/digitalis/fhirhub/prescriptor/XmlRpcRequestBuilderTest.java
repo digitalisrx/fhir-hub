@@ -149,8 +149,8 @@ class XmlRpcRequestBuilderTest {
 	@Test
 	void writesResolvedCurrentMedication() {
 		String xml = builder.openSession(Fixtures.formularySession(), Fixtures.CREDENTIALS, List.of(
-				new MedicationCodes(18996, 1234, null),
-				new MedicationCodes(2106, 5678, 999)));
+				new MedicationCodes(18996, 1234, null, "N02BE01"),
+				new MedicationCodes(2106, 5678, 999, "N02AA05")));
 
 		assertThat(xml).contains("<drug pending=\"false\"><GStandaard PRK=\"18996\" GPK=\"1234\"");
 		assertThat(xml).contains("<drug pending=\"false\"><GStandaard PRK=\"2106\" GPK=\"5678\" HPK=\"999\"");
@@ -200,7 +200,7 @@ class XmlRpcRequestBuilderTest {
 				new SessionRequest(SessionType.FORMULARY, "A01", patient, "https://x.example/d",
 						Fixtures.XIS, null),
 				Fixtures.CREDENTIALS,
-				List.of(new MedicationCodes(3689, 111111, 2106), new MedicationCodes(18996, 222222, null)));
+				List.of(new MedicationCodes(3689, 111111, 2106, "N02AA05"), new MedicationCodes(18996, 222222, null, "N02BE01")));
 
 		assertThat(between(xml, "<name>MedicationType</name>", "</member>")).contains("<int>9</int>");
 
@@ -220,7 +220,7 @@ class XmlRpcRequestBuilderTest {
 		String xml = builder.openSession(
 				new SessionRequest(SessionType.FORMULARY, "A01", patient, "https://x.example/d",
 						Fixtures.XIS, null),
-				Fixtures.CREDENTIALS, List.of(new MedicationCodes(3689, 111111, 2106)));
+				Fixtures.CREDENTIALS, List.of(new MedicationCodes(3689, 111111, 2106, "N02AA05")));
 
 		assertThat(between(xml, "<name>MedicationType</name>", "</member>")).contains("<int>9</int>");
 	}

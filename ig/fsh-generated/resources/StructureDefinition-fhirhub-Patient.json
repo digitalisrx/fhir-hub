@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-Patient",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Patient",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "FhirHubPatient",
   "title": "fhir-hub Patient",
   "status": "draft",
