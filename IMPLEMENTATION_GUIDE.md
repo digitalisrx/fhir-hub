@@ -681,11 +681,17 @@ whose use starts in the future, and an entry with no start at all would be skipp
 **ended** says the patient is not taking the medication, and that entry is not weighed. Send the
 period you mean.
 
-**Weight and height are accepted and do not yet reach dose control.** They are on the
-[lab determinations](#lab-determinations) list and they travel in LOINC, and this contract's dose
-check reads them from an NHG-coded element this interface does not send yet. This one is visible
-rather than silent: where a dose band needs a weight, the answer carries a signal saying the data
-is missing.
+**Send a weight for any patient whose dose depends on it, and a height with it.** Dose bands are
+selected by weight and body surface before they are compared, so a weight-dependent band with no
+weight is not a check that passes — it is a red signal saying it could not run: *"Geen
+doseringscontrole: onbekend actueel gewicht"*. With one, the dose is evaluated: the same
+prescription for the same child answers *"Geen doseringsaanpassing"* when the dose fits the band
+and *"Pas de dosering aan"* when it does not.
+
+Send them as ordinary `observation` parameters with LOINC `29463-7` and `8302-2` — a weight in
+`kg`, a height in `cm` or `m`. Nothing else changes on your side; this interface adds the
+NHG-coded form the dose check reads. Body surface is derived from the two upstream, so a height
+matters for any drug dosed per m².
 
 ```jsonc
 POST /fhir/surveillance/$check-medication
@@ -808,15 +814,13 @@ is described instead, until it has been reviewed against real reports. Read `sev
 
 ### What the answer does not cover yet
 
-Three gaps, and each of them is a rule that stays silent rather than an error you would notice.
+Two gaps, and both of them are a rule that stays silent rather than an error you would notice.
 They are listed here because a host has to decide what to tell a prescriber.
 
 - **Rules that compare the prescribed daily dose against the defined daily dose cannot fire.**
   Computing a PDD means decoding the NHG Tabel 25 instruction, and this interface passes that string
   through undecoded (see [Extensions](#extensions)). The dose *bands* are checked, which is the
   larger half of dose control; the DDD ratio is not.
-- **Weight and height do not reach dose control.** See the input section above: where a band needs
-  a weight, the answer carries a "data missing" signal, so this one is at least visible.
 - **A partial answer is not distinguishable from a complete one.** If the rules engine answers and
   the classic checks fail, the report comes back with what ran. The upstream does not say which
   half is missing, so this interface cannot either. What it will never do is present nothing at all

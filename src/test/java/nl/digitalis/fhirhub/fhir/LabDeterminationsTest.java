@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 import nl.digitalis.fhirhub.fhir.LabDeterminations.Determination;
+import nl.digitalis.fhirhub.fhir.LabDeterminations.NhgEquivalent;
 
 /**
  * The accepted determinations are written down twice — as a Java table that maps each LOINC code
@@ -99,5 +100,44 @@ class LabDeterminationsTest {
 		}
 
 		return found;
+	}
+
+	/**
+	 * The two determinations the dose check reads carry an NHG identity, and they are the only two.
+	 * The correspondence is not a coincidence — a determination with no MFB parameter is one no
+	 * beslisregel tests, and the thing that does test it reads NHG — so it is enforced in the
+	 * record's constructor and pinned here.
+	 */
+	@Test
+	void onlyTheDeterminationsTheDoseCheckReadsCarryAnNhgIdentity() {
+		for (String loinc : determinations.acceptedCodes()) {
+			Determination determination = determinations.forLoinc(loinc);
+
+			assertThat(determination.nhg() != null)
+					.as("%s has an NHG identity exactly when no MFB parameter reads it", loinc)
+					.isEqualTo(determination.mfbParameter() == null);
+		}
+	}
+
+	@Test
+	void namesTheNhgIdentityTheHubSelectsOn() {
+		assertThat(determinations.forLoinc("29463-7").nhg())
+				.extracting(NhgEquivalent::id, NhgEquivalent::memo, NhgEquivalent::mat)
+				.containsExactly(357, "GEW", "AO");
+		assertThat(determinations.forLoinc("8302-2").nhg())
+				.extracting(NhgEquivalent::id, NhgEquivalent::memo, NhgEquivalent::mat)
+				.containsExactly(560, "LNGP", "AO");
+	}
+
+	/**
+	 * A weight is kilograms in both forms; a length is centimetres in the LOINC one and metres in
+	 * the NHG one, which is the unit NHG determination 560 records and the unit the Hub's Mosteller
+	 * expression expects.
+	 */
+	@Test
+	void convertsToTheUnitTheNhgDeterminationIsRecordedIn() {
+		assertThat(determinations.forLoinc("29463-7").nhg().value("70")).isEqualTo("70");
+		assertThat(determinations.forLoinc("8302-2").nhg().value("178")).isEqualTo("1.78");
+		assertThat(determinations.forLoinc("8302-2").nhg().value("180")).isEqualTo("1.8");
 	}
 }

@@ -33,6 +33,12 @@ is a 500 with an `OperationOutcome`, never a 200 with no findings. That is the s
 an unresolvable drug code a 400 rather than a dropped drug, and it is why this endpoint spent a
 release answering 501 rather than "no issues found".
 
+**Weight and height now reach dose control.** Send them as `observation` parameters (LOINC
+`29463-7` in `kg`, `8302-2` in `cm` or `m`) and a weight-dependent dose band is evaluated instead
+of refused. Without one, dose control answers *"Geen doseringscontrole: onbekend actueel gewicht"*
+— a red signal saying it could not run, which is not the same thing as a dose that passed. Nothing
+changes in what you send; the NHG-coded form the dose check reads is added on the way out.
+
 **Set `id` on the resources you send.** It comes back on `DetectedIssue.implicated` as the
 identifier of the record a signal is about, which is what lets you show the signal against the right
 row instead of matching on codes. Without one you get a positional identifier that is stable only

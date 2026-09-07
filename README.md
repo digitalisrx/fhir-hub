@@ -291,11 +291,13 @@ unreachable, refused, or a response with no report in it — is a 500, enforced 
 `MedicationSurveillanceResponseParser`. That is the same rule as the 400 on an unresolvable drug
 code, and it is why this operation answered 501 for a release rather than "no issues found".
 
-**Three gaps are known and documented for integrators** in the guide, because each is a rule that
-stays silent: no PDD or DDD is sent, so dose rules comparing the two cannot fire; weight and height
-travel as LOINC and the Hub's dose check reads them from NHG-coded elements this interface does not
-send yet, which surfaces as a "data missing" signal rather than a pass; and nothing distinguishes a
-partial answer from a complete one, because the upstream does not say. **And the Hub does not
+**Two gaps are known and documented for integrators** in the guide, because each is a rule that
+stays silent: no PDD or DDD is sent, so dose rules comparing the two cannot fire, and nothing
+distinguishes a partial answer from a complete one because the upstream does not say. A third —
+weight and height reaching the Hub's dose check, which reads them as NHG rather than LOINC — is
+closed: `LabDeterminations.NhgEquivalent` carries the NHG identity of those two determinations and
+the surveillance builder writes it beside the LOINC element. NHG 560 is in metres, which is the one
+decision in it. **And the Hub does not
 adjudicate the credentials** — it overwrites the licence in the payload with its own before calling
 the engine — so unlike a session, a wrong practice id is not rejected upstream. `HubClient` records
 that; closing it is a deployment or a product decision, not a code one.
@@ -587,11 +589,15 @@ Changing them alters clinical behaviour and needs its own decision.
   check (a Digitalis code system for `mfb` / `allergy` / `dosage` / `double-medication` / `age`
   would make the answer routable), and whether the rule text should also travel as a sanitised
   XHTML narrative rather than only as plain text in `detail`.
-- **Close the three gaps in what the check covers**: PDD and DDD (which needs Tabel 25 decoded, so
-  it is the expensive one), weight and height reaching dose control (which needs the NHG element
-  the Hub reads, and a decision about metres versus centimetres — the Hub's BSA formula multiplies
-  the length it finds by 100), and a way to tell a partial report from a complete one, which has
-  to come from the Hub.
+- **Close the two remaining gaps in what the check covers**: PDD and DDD, which needs Tabel 25
+  decoded and is therefore the expensive one, and a way to tell a partial report from a complete
+  one, which has to come from the Hub.
+- **Reconcile the unit of NHG 560 with `evs2.0`.** This interface sends the length in metres, per
+  the NHG determination and per the Hub's Mosteller expression, which multiplies by 100.
+  `evs2.0/library/Prescriptor/OpenSession/Loader/Patient.php` reads the same element as
+  centimetres. Only the Hub reads the document this interface builds, so nothing is wrong today —
+  but the two readers disagree about a schema element, and whichever is corrected, the other one
+  moves.
 - **A sandbox for integrator self-testing.** `../tests-digitalisrx-testpatients` is the
   natural seed.
 - **No resource sets `meta.profile`.** `fhir/Profiles.java` holds the canonicals and the

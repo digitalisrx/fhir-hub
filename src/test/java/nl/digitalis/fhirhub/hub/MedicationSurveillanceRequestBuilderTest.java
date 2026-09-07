@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import nl.digitalis.fhirhub.Fixtures;
+import nl.digitalis.fhirhub.fhir.LabDeterminations;
 import nl.digitalis.fhirhub.model.CodedItem;
 import nl.digitalis.fhirhub.model.LabResult;
 import nl.digitalis.fhirhub.model.MedicationCodes;
@@ -27,7 +28,8 @@ import nl.digitalis.fhirhub.model.SurveillanceRequest;
  */
 class MedicationSurveillanceRequestBuilderTest {
 
-	private final MedicationSurveillanceRequestBuilder builder = new MedicationSurveillanceRequestBuilder();
+	private final MedicationSurveillanceRequestBuilder builder =
+			new MedicationSurveillanceRequestBuilder(new LabDeterminations());
 
 	@Test
 	void wrapsTheDocumentInTheEnvelopeTheHubResolves() {
@@ -215,6 +217,46 @@ class MedicationSurveillanceRequestBuilderTest {
 				.contains("value=\"35\"");
 	}
 
+	/**
+	 * The dose check reads a weight by NHG id and cannot read a LOINC code, so both forms go out.
+	 * Kilograms on both sides.
+	 */
+	@Test
+	void writesAWeightInItsNhgIdentityAsWellAsItsLoincOne() {
+		String xml = withLab(new LabResult("29463-7", "Gewicht", "kg",
+				LocalDate.of(2026, 9, 6), null, "70", "obs-1"));
+
+		assertThat(xml)
+				.contains("<LOINC num=\"29463-7\" caption=\"Gewicht\" date=\"2026-09-06\" value=\"70\" UID=\"obs-1\"")
+				.contains("<NHG id=\"357\" memo=\"GEW\" mat=\"AO\" caption=\"Gewicht\""
+						+ " date=\"2026-09-06\" value=\"70\" UID=\"obs-1\"");
+	}
+
+	/**
+	 * And a length goes out in metres, which is what NHG determination 560 records — the
+	 * centimetres this interface holds it in are the LOINC form's unit. The Hub's Mosteller
+	 * expression multiplies what it finds by 100 to get the centimetres the formula wants, so
+	 * sending centimetres here would be a body surface ten times too large.
+	 */
+	@Test
+	void writesALengthInMetresInItsNhgIdentity() {
+		String xml = withLab(new LabResult("8302-2", "Lengte", "cm",
+				LocalDate.of(2026, 9, 6), null, "178", "obs-2"));
+
+		assertThat(xml)
+				.contains("<LOINC num=\"8302-2\" caption=\"Lengte\" date=\"2026-09-06\" value=\"178\"")
+				.contains("<NHG id=\"560\" memo=\"LNGP\" mat=\"AO\" caption=\"Lengte\""
+						+ " date=\"2026-09-06\" value=\"1.78\" UID=\"obs-2\"");
+	}
+
+	/** Everything the beslisregels read stays LOINC-only: two rows of NHG is the whole exception. */
+	@Test
+	void writesNoNhgIdentityForADeterminationTheRulesRead() {
+		assertThat(build())
+				.contains("<LOINC num=\"62238-1\"")
+				.doesNotContain("<NHG");
+	}
+
 	@Test
 	void writesADateOnlyDeterminationAsADate() {
 		SurveillanceRequest request = new SurveillanceRequest(Fixtures.XIS, "F",
@@ -275,6 +317,13 @@ class MedicationSurveillanceRequestBuilderTest {
 
 	private String build() {
 		return builder.medicationSurveillance(Fixtures.surveillanceRequest(), credentials());
+	}
+
+	private String withLab(LabResult lab) {
+		return builder.medicationSurveillance(new SurveillanceRequest(Fixtures.XIS, "F",
+				LocalDate.of(2007, 9, 7), List.of(), List.of(), List.of(),
+				Fixtures.surveillanceRequest().proposed(), List.of(), List.of(lab)),
+				credentials());
 	}
 
 	private PrescriptorCredentials credentials() {

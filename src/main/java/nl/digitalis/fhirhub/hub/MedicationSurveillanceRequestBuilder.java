@@ -5,6 +5,9 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Component;
 
+import nl.digitalis.fhirhub.fhir.LabDeterminations;
+import nl.digitalis.fhirhub.fhir.LabDeterminations.Determination;
+import nl.digitalis.fhirhub.fhir.LabDeterminations.NhgEquivalent;
 import nl.digitalis.fhirhub.model.CodedItem;
 import nl.digitalis.fhirhub.model.LabResult;
 import nl.digitalis.fhirhub.model.PrescriptorCredentials;
@@ -62,6 +65,12 @@ import nl.digitalis.fhirhub.xml.XmlWriter;
  */
 @Component
 public class MedicationSurveillanceRequestBuilder {
+
+	private final LabDeterminations determinations;
+
+	public MedicationSurveillanceRequestBuilder(LabDeterminations determinations) {
+		this.determinations = determinations;
+	}
 
 	static final String SOAP_NS = "http://schemas.xmlsoap.org/soap/envelope/";
 
@@ -169,15 +178,65 @@ public class MedicationSurveillanceRequestBuilder {
 								.attribute("num", lab.loinc())
 								.attribute("caption", lab.caption())
 								.attribute("date", moment(lab))
-								.attribute("value", lab.value());
+								.attribute("value", lab.value())
+								.attribute("UID", uid(lab.uid()));
 
 						if (lab.time() != null) {
 							loinc.attribute("time", lab.time().toString());
 						}
+
+						nhg(l, lab);
 					}
 				});
 			});
 		});
+	}
+
+	/**
+	 * The same determination a second time, in its NHG identity, for the two that have one.
+	 *
+	 * <p>The G-Standaard dose-band model is the only consumer that cannot read a LOINC code: the
+	 * Hub selects a weight with {@code NHG[@id="357" or @id="2408"]} and a length with
+	 * {@code NHG[@id="560"]}, and finds nothing in a document that carries only
+	 * {@code <LOINC num="29463-7">}. Before this element existed, a request that carried a weight
+	 * still produced "gewicht ontbreekt" from a weight-dependent dose band — the check reported
+	 * that it could not run, which is the good version of that failure and still a check that did
+	 * not run.
+	 *
+	 * <p>Written <em>beside</em> the LOINC element and not instead of it, because the beslisregels
+	 * read the LOINC form and the two engines answer the same call. See
+	 * {@code LabDeterminations.NhgEquivalent} for why two rows of NHG is not the NHG mapping this
+	 * codebase refuses to have, and for the units: a weight is kilograms in both forms, a length is
+	 * metres here and centimetres in the LOINC one.
+	 *
+	 * <p>{@code memo}, {@code mat} and {@code bijz} are written as well as {@code id}, because the
+	 * Hub is not the only reader that matches on them: {@code TCRELabValueNHG.Matches} compares
+	 * memo, material and particularity, so a rule that tests an NHG determination finds nothing in
+	 * an element that carries the id alone.
+	 */
+	private void nhg(XmlWriter xml, LabResult lab) {
+		Determination determination = determinations.forLoinc(lab.loinc());
+		NhgEquivalent nhg = determination == null ? null : determination.nhg();
+		if (nhg == null) {
+			return;
+		}
+
+		XmlWriter element = xml.empty("NHG")
+				.attribute("id", String.valueOf(nhg.id()))
+				.attribute("memo", nhg.memo())
+				.attribute("mat", nhg.mat())
+				.attribute("caption", lab.caption())
+				.attribute("date", moment(lab))
+				.attribute("value", nhg.value(lab.value()))
+				.attribute("UID", uid(lab.uid()));
+
+		if (nhg.bijz() != null) {
+			element.attribute("bijz", nhg.bijz());
+		}
+	}
+
+	private String uid(String uid) {
+		return uid == null ? "" : uid;
 	}
 
 	/**

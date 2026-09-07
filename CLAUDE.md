@@ -174,16 +174,20 @@ is enforced and `SurveillanceIntegrationTest.refusesToTurnAFailedCheckIntoAnAllC
 it enforced. Do not soften a parse failure into an empty result; a prescriber who sent a medication
 list and saw no signal reads it as an all-clear.
 
-**Three gaps are known, and each fails as silence.** They are documented for integrators in the
-guide rather than only here, because a host has to decide what to show a prescriber. No `PDD` or
-`DDD` is sent (computing a PDD means decoding Tabel 25, which this codebase deliberately does not
-do), so dose rules comparing the two cannot fire — the engine guards the division, so the effect is
-a silent rule rather than an error. Weight and height travel as LOINC and the Hub's dose check
-reads them from `<NHG id="357">` and `<NHG id="560">`, which this interface does not send; that one
-surfaces as a "data missing" signal rather than a pass, and note before adding it that the Hub's
-BSA formula multiplies the length it finds by 100, so its element is in metres where
-`LabDeterminations` normalises to centimetres. And nothing distinguishes a partial report from a
-complete one, because the upstream does not say.
+**Two gaps are known, and both fail as silence.** They are documented for integrators in the guide
+rather than only here, because a host has to decide what to show a prescriber. No `PDD` or `DDD` is
+sent (computing a PDD means decoding Tabel 25, which this codebase deliberately does not do), so
+dose rules comparing the two cannot fire — the engine guards the division, so the effect is a
+silent rule rather than an error. And nothing distinguishes a partial report from a complete one,
+because the upstream does not say.
+
+A third one is closed and worth knowing how it was closed, because nothing local would have shown
+it: weight and height reached the Hub as LOINC only, and its dose check reads them as NHG. Measured
+against the live service with one prescription and one patient, changing nothing but the two lab
+values: paracetamol zetpil 120mg three times a day for a 14 kg three-year-old answered
+`[1] Geen doseringscontrole: onbekend actueel gewicht` without them and `[3] Geen
+doseringsaanpassing` with them, and the same child at 4 × 1000mg answered `[1] Pas de dosering
+aan`. The value is read as a number, not merely present.
 
 **The Hub does not adjudicate the credentials.** `CreCall.use_prescriptor_license` overwrites the
 licence in the payload with the Hub's own before calling the engine, and the
@@ -240,6 +244,23 @@ Tabel 45 mapping and there should not be one: the upstream carries lab data as `
 the MFB datatest generator (`g-standaard/GStandaard/apps/mfb/functions`) builds a `DatatestLOINC`
 keyed on that number, so translating would add a table to maintain and a class of determinations
 that cannot be expressed at all.
+
+**Two determinations are the exception, and the exception has a test rather than a preference.**
+Gewicht and lengte are read by the G-Standaard dose-band model instead of by the rules, and the
+Hub reads them *only* as `<NHG id="357">` and `<NHG id="560">` — a document carrying just
+`<LOINC num="29463-7">` leaves it answering "Geen doseringscontrole: onbekend actueel gewicht",
+which was measured before `LabDeterminations.NhgEquivalent` existed. So those two carry an NHG
+identity as well, written beside the LOINC element rather than instead of it, on the surveillance
+contract only. They are also exactly the two determinations with no MFB parameter — no beslisregel
+tests them — and the `Determination` constructor enforces that correspondence, so a third NHG row
+cannot be added without finding a consumer that reads it and cannot read LOINC.
+
+**NHG 560 is in metres**, which is why `NhgEquivalent` divides the centimetres this interface holds
+by 100. The Hub's Mosteller expression multiplies what it finds by 100 to reach the centimetres the
+formula wants, so centimetres here would be a body surface ten times too large — and a per-m² norm
+divides by the BSA, so the failure would be a missed overdose rather than an error. Note that
+`evs2.0` reads the same element as centimetres (`Patient.php`, `# NHG in cm`); that reader never
+sees this document, and if one is ever routed to it the unit has to be revisited.
 
 `fhir/LabDeterminations` holds the list, and it is a copy of published data: `BST684T` rows with
 `MFBEXSRT = 4` ("LOINC / Nederlandse Labcodeset") say which LOINC codes count as which MFB

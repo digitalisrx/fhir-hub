@@ -51,16 +51,28 @@ public class LabDeterminations {
 	 * @param mfbParameter {@code BST685T.MFBPANR}, or null for the two the dose check reads rather
 	 *                     than the rules
 	 * @param factorByUnit UCUM code to the factor for {@link #unit}, so {@code m} to {@code cm} is 100
+	 * @param nhg          the NHG identity to send <em>as well</em>, for the two determinations the
+	 *                     dose check reads; null for everything the rules read. See
+	 *                     {@link NhgEquivalent}
 	 */
 	public record Determination(
 			String loinc,
 			Integer mfbParameter,
 			String display,
 			String unit,
-			Map<String, BigDecimal> factorByUnit) {
+			Map<String, BigDecimal> factorByUnit,
+			NhgEquivalent nhg) {
 
 		public Determination {
 			factorByUnit = Map.copyOf(factorByUnit);
+
+			// The two facts are the same fact: a determination with no MFB parameter is not read by
+			// a beslisregel at all, and the only thing that does read it reads NHG.
+			if ((mfbParameter == null) != (nhg != null)) {
+				throw new IllegalStateException(
+						"Determination " + loinc + ": an NHG identity is for the determinations the dose"
+								+ " check reads, which are exactly those with no MFB parameter");
+			}
 		}
 
 		/** The value in {@link #unit}, or null when the unit is not one this determination accepts. */
@@ -73,6 +85,40 @@ public class LabDeterminations {
 		/** The UCUM codes a caller may use, for the guide and for a rejection message. */
 		public List<String> acceptedUnits() {
 			return factorByUnit.keySet().stream().sorted().toList();
+		}
+	}
+
+	/**
+	 * The NHG identity of a determination, for the one consumer that cannot read a LOINC code.
+	 *
+	 * <p><strong>This is the exception to "no NHG mapping", and it is two rows wide.</strong> The
+	 * rule stands for everything the beslisregels read: those are keyed on LOINC numbers by the MFB
+	 * datatest generator, so translating them would add a table to maintain and a class of
+	 * determinations that cannot be expressed at all. Weight and height are not in that group —
+	 * they have no MFB parameter, no rule tests them, and the thing that does read them is the
+	 * G-Standaard dose-band model, which the Hub feeds from {@code <NHG id="357">} and
+	 * {@code <NHG id="560">} and from nothing else. For these two, LOINC-only means "not read":
+	 * measured, before this existed, as a dose check that answered "gewicht ontbreekt" for a
+	 * request that carried a weight.
+	 *
+	 * <p>So the NHG element is written <em>beside</em> the LOINC one rather than instead of it, and
+	 * only on the surveillance contract. Adding a third row means finding a consumer that reads it
+	 * and cannot read LOINC; that is the test, not tidiness.
+	 *
+	 * @param id     {@code NHG[@id]}, which is what the Hub's dose check selects on
+	 * @param memo   the determination's mnemonic, which is what {@code evs2.0} and the rules engine
+	 *               select on — {@code TCRELabValueNHG.Matches} compares memo, mat and bijz
+	 * @param mat    material, {@code AO} for a measurement taken on the patient
+	 * @param bijz   particularity, or null where the determination has none
+	 * @param factor from the unit this interface holds the value in to the unit the NHG
+	 *               determination is recorded in. Centimetres to metres for height, and nothing
+	 *               for a weight, which is kilograms on both sides
+	 */
+	public record NhgEquivalent(int id, String memo, String mat, String bijz, BigDecimal factor) {
+
+		/** The value as the NHG determination records it, from the value this interface holds. */
+		public String value(String upstreamValue) {
+			return new BigDecimal(upstreamValue).multiply(factor).stripTrailingZeros().toPlainString();
 		}
 	}
 
@@ -113,13 +159,27 @@ public class LabDeterminations {
 		// in BST643T carry a minimum weight and 1.215 a body surface bound, and evs2.0 reads both
 		// out of laboratoryData by these LOINC codes. Metres are converted to the centimetres its
 		// body model works in, so the number is right even if the unit attribute is ignored.
-		add("29463-7", null, "Gewicht", "kg", Map.of("kg", AS_IS));
-		add("8302-2", null, "Lengte", "cm", Map.of("cm", AS_IS, "m", BigDecimal.valueOf(100)));
+		//
+		// They are also the two determinations that carry an NHG identity, because the Hub's dose
+		// check reads them by NHG id and cannot read a LOINC code — see NhgEquivalent for why that
+		// is not the NHG mapping this class refuses to have.
+		add("29463-7", null, "Gewicht", "kg", Map.of("kg", AS_IS),
+				new NhgEquivalent(357, "GEW", "AO", null, AS_IS));
+		// NHG 560 records a length in metres, so the centimetres this interface holds are divided
+		// back down. That is the unit the Hub's Mosteller expression expects — it multiplies the
+		// value it finds by 100 to get the centimetres the formula wants.
+		add("8302-2", null, "Lengte", "cm", Map.of("cm", AS_IS, "m", BigDecimal.valueOf(100)),
+				new NhgEquivalent(560, "LNGP", "AO", null, new BigDecimal("0.01")));
 	}
 
 	private void add(String loinc, Integer mfbParameter, String display, String unit,
 			Map<String, BigDecimal> factorByUnit) {
-		byLoinc.put(loinc, new Determination(loinc, mfbParameter, display, unit, factorByUnit));
+		add(loinc, mfbParameter, display, unit, factorByUnit, null);
+	}
+
+	private void add(String loinc, Integer mfbParameter, String display, String unit,
+			Map<String, BigDecimal> factorByUnit, NhgEquivalent nhg) {
+		byLoinc.put(loinc, new Determination(loinc, mfbParameter, display, unit, factorByUnit, nhg));
 	}
 
 	/** The determination for a LOINC code, or null when it is not one surveillance reads. */

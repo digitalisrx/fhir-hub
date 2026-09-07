@@ -17,6 +17,10 @@ import java.time.LocalTime;
  * date-only value collapses to midnight, so two results from one day tie and the tie is broken by
  * the order they were sent in rather than by which is later. See
  * {@code DigitalisRxBuilder.upstreamMoment} for the two shapes the engine parses.
+ *
+ * <p>{@code uid} is the host's own id for the record, echoed back inside a finding's context so a
+ * signal about a lab value can be pointed at the row it came from. Only the surveillance contract
+ * sends it.
  */
 public record LabResult(
 		String loinc,
@@ -24,7 +28,14 @@ public record LabResult(
 		String unit,
 		LocalDate date,
 		LocalTime time,
-		String value) {
+		String value,
+		String uid) {
+
+	/** A determination without the host's record id, for the contract that does not echo one. */
+	public LabResult(String loinc, String caption, String unit, LocalDate date, LocalTime time,
+			String value) {
+		this(loinc, caption, unit, date, time, value, null);
+	}
 
 	public LabResult {
 		// Coding.display when the host sent one; the determination's own name otherwise, so the

@@ -259,7 +259,9 @@ public class ClinicalContextMapper {
 	 */
 	public List<LabResult> laboratoryData(List<Observation> observations) {
 		List<LabResult> results = new ArrayList<>();
+		int index = 0;
 		for (Observation observation : observations) {
+			index++;
 			Coding coding = firstCodingForSystem(observation.getCode(), Systems.LOINC);
 			if (coding == null) {
 				throw new InvalidRequestException(
@@ -283,7 +285,8 @@ public class ClinicalContextMapper {
 					determination.unit(),
 					effective.date(),
 					effective.time(),
-					valueIn(observation, determination)));
+					valueIn(observation, determination),
+					uid(observation.getIdPart(), "observation", index)));
 		}
 
 		return results;

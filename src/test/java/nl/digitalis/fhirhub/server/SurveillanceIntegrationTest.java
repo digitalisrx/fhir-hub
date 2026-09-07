@@ -21,15 +21,18 @@ import org.hl7.fhir.r4.model.CapabilityStatement;
 import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestComponent;
 import org.hl7.fhir.r4.model.CapabilityStatement.CapabilityStatementRestResourceOperationComponent;
 import org.hl7.fhir.r4.model.CodeType;
+import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.DetectedIssue;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
 import org.hl7.fhir.r4.model.MedicationRequest;
 import org.hl7.fhir.r4.model.MedicationStatement;
+import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.OperationDefinition;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.jupiter.api.AfterAll;
@@ -142,7 +145,12 @@ class SurveillanceIntegrationTest {
 				.contains("PRK=\"43800\" GPK=\"222222\" HPK=\"2106\"")
 				// The host's own wording and record id, all the way from Coding.display and
 				// AllergyIntolerance.id to the attributes the Hub writes into its signal.
-				.contains("<GStandaard SNK=\"10499\" caption=\"TALK\" UID=\"allergy-1\"");
+				.contains("<GStandaard SNK=\"10499\" caption=\"TALK\" UID=\"allergy-1\"")
+				// A weight the host sent in LOINC, in the NHG identity the dose check selects on —
+				// and in both forms, because the beslisregels read the other one.
+				.contains("<LOINC num=\"29463-7\"")
+				.contains("<NHG id=\"357\" memo=\"GEW\" mat=\"AO\" caption=\"Gewicht\"")
+				.contains("value=\"70\" UID=\"weight-1\"");
 	}
 
 	/**
@@ -396,6 +404,14 @@ class SurveillanceIntegrationTest {
 				.setCode("10499")
 				.setDisplay("TALK");
 
+		Observation weight = new Observation();
+		weight.setId("weight-1");
+		weight.setStatus(Observation.ObservationStatus.FINAL);
+		weight.getCode().addCoding().setSystem(Systems.LOINC).setCode("29463-7");
+		weight.setEffective(new DateTimeType("2026-09-06"));
+		weight.setValue(new Quantity().setValue(70L)
+				.setSystem(Systems.UCUM).setCode("kg").setUnit("kg"));
+
 		Parameters parameters = new Parameters();
 		parameters.addParameter().setName("patient").setResource(patient);
 		parameters.addParameter().setName("xisId").setValue(new StringType("xis-001"));
@@ -403,6 +419,7 @@ class SurveillanceIntegrationTest {
 		parameters.addParameter().setName("prescription").setResource(prescription);
 		parameters.addParameter().setName("medicationStatement").setResource(statement);
 		parameters.addParameter().setName("allergyIntolerance").setResource(allergy);
+		parameters.addParameter().setName("observation").setResource(weight);
 
 		return parameters;
 	}
