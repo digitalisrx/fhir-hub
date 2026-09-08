@@ -439,3 +439,64 @@ Description: "A patient's current medication checked against itself and their co
 * parameter[allergyIntolerance][0].resource = ExampleAllergy
 * parameter[observation][0].name = "observation"
 * parameter[observation][0].resource = ExampleLabResult
+
+
+// The response, and the first example in this guide that is an OUTPUT of the surveillance
+// contract rather than an input. It is the FHIR form of two of the signals the reference-case
+// request produces at hub.digitalis.nl: a nierfunctie beslisregel that fires red on the proposed
+// metformine, and an allergy check that ran and matched nothing — which is the shape a host is
+// most likely to misread, because its text reads "voor het onderstaande middel" while its
+// severity is low and its implicated list is empty.
+Instance: SurveillanceFindingNierfunctie
+InstanceOf: FhirHubSurveillanceFinding
+Usage: #inline
+* identifier[0].system = "http://spec.digitalis.nl/fhir/sid/crs-rule"
+* identifier[0].value = "MFB-0000000068-v000006"
+* status = #final
+* code.text = "Nierfunctie: metformine"
+* severity = #high
+* identifiedDateTime = "2026-09-07T11:11:16+02:00"
+* implicated[0].type = "MedicationRequest"
+* implicated[0].identifier.value = "rx-1"
+* implicated[0].display = "METFORMINE TABLET   500MG"
+* detail = "Risico op lactaatacidose is verhoogd. Patiënt heeft creatinineklaring 30-60 ml/min.\n1. aanvankelijk 500 mg metformine 2x per dag\n2. vervolgens dosering geleidelijk verhogen tot standaardonderhoudsdosering"
+* evidence[0].code[0].coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* evidence[0].code[0].coding[0].code = #1090
+* evidence[0].code[0].coding[1].system = "urn:oid:2.16.840.1.113883.2.4.4.1"
+* evidence[0].code[0].coding[1].code = #3816
+* evidence[0].code[0].coding[2].system = "http://www.whocc.no/atc"
+* evidence[0].code[0].coding[2].code = #A10BA02
+* evidence[0].code[0].text = "METFORMINE TABLET   500MG"
+* evidence[1].code[0].coding[0].system = "http://loinc.org"
+* evidence[1].code[0].coding[0].code = #62238-1
+* evidence[1].code[0].text = "kreatinineklaring: 35"
+
+// Checked, nothing matched. severity low and NO implicated — branch on those two rather than on
+// the sentence, which is the upstream's wording and is only accurate when the check did match.
+Instance: SurveillanceFindingAllergyClear
+InstanceOf: FhirHubSurveillanceFinding
+Usage: #inline
+* identifier[0].system = "http://spec.digitalis.nl/fhir/sid/crs-rule"
+* identifier[0].value = "hub-allergy-snk-10499"
+* status = #final
+* code.text = "Allergie (SNK)"
+* severity = #low
+* identifiedDateTime = "2026-09-07T11:11:16+02:00"
+* detail = "In het dossier is een allergie (PENICILLINES) geregistreerd voor het onderstaande middel."
+* evidence[0].code[0].coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.1.750"
+* evidence[0].code[0].coding[0].code = #10499
+* evidence[0].code[0].text = "PENICILLINES"
+
+Instance: ExampleSurveillanceBundle
+InstanceOf: FhirHubSurveillanceBundle
+Usage: #example
+Title: "Medication surveillance response"
+Description: "Two signals from one report: a nierfunctie beslisregel firing red on a proposed metformine, and an allergy check that ran and matched nothing. Bundle.identifier is the report id to quote in a support question."
+* identifier.system = "http://spec.digitalis.nl/fhir/sid/crs-report"
+* identifier.value = "83327A6E-FAED-4448-A20E-EFEA660C7627"
+* type = #collection
+* timestamp = "2026-09-07T11:11:16+02:00"
+* entry[0].fullUrl = "urn:uuid:6f1b2d34-5a67-4c89-b012-3456789abcde"
+* entry[0].resource = SurveillanceFindingNierfunctie
+* entry[1].fullUrl = "urn:uuid:2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d"
+* entry[1].resource = SurveillanceFindingAllergyClear

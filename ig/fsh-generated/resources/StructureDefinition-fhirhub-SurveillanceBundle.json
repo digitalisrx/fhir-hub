@@ -1,0 +1,90 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "fhirhub-SurveillanceBundle",
+  "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceBundle",
+  "version": "0.4.0",
+  "name": "FhirHubSurveillanceBundle",
+  "title": "Medication surveillance output",
+  "status": "draft",
+  "description": "What POST /fhir/surveillance/$check-medication-request and POST /fhir/surveillance/$check-medication-statement return: one DetectedIssue per signal, in the order the clinical-rules report listed them. An empty Bundle means the check ran and no rule fired — every way for the check not to happen is a 500 instead, never a 200 with no findings.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Bundle",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Bundle",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Bundle.identifier",
+        "path": "Bundle.identifier",
+        "short": "The report id the clinical-rules service assigned (CRID)",
+        "comment": "Log it. It is what Digitalis support asks for when a prescriber queries a signal, and the only handle that ties this answer to the run that produced it. Optional only because the upstream is the one that assigns it."
+      },
+      {
+        "id": "Bundle.identifier.system",
+        "path": "Bundle.identifier.system",
+        "min": 1,
+        "fixedUri": "http://spec.digitalis.nl/fhir/sid/crs-report"
+      },
+      {
+        "id": "Bundle.identifier.value",
+        "path": "Bundle.identifier.value",
+        "min": 1
+      },
+      {
+        "id": "Bundle.type",
+        "path": "Bundle.type",
+        "comment": "A collection, not a searchset: this is not the result of a search and has no paging.",
+        "fixedCode": "collection"
+      },
+      {
+        "id": "Bundle.timestamp",
+        "path": "Bundle.timestamp",
+        "short": "When the report was produced upstream",
+        "comment": "The upstream's clock, not this service's, and repeated on every finding as DetectedIssue.identifiedDateTime."
+      },
+      {
+        "id": "Bundle.entry",
+        "path": "Bundle.entry",
+        "short": "One entry per signal; none if nothing fired",
+        "comment": "An empty Bundle is a valid and meaningful answer: the check ran and no rule fired. It is NOT what you get when the check could not run — that is a 500 with an OperationOutcome. A prescriber cannot tell an empty list of findings apart from a genuine all-clear, so this interface never returns one for a check that did not happen."
+      },
+      {
+        "id": "Bundle.entry.fullUrl",
+        "path": "Bundle.entry.fullUrl",
+        "short": "A urn:uuid, unique within this Bundle and nowhere else",
+        "comment": "This service stores nothing and there is no endpoint to fetch a finding back from, so there is no server identity to give these. Do not persist a fullUrl as a key or expect it to be stable across calls: the stable handle for a finding is DetectedIssue.identifier, which is the rule the signal came from.",
+        "min": 1
+      },
+      {
+        "id": "Bundle.entry.resource",
+        "path": "Bundle.entry.resource",
+        "min": 1,
+        "type": [
+          {
+            "code": "DetectedIssue",
+            "profile": [
+              "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Bundle.entry.search",
+        "path": "Bundle.entry.search",
+        "max": "0"
+      },
+      {
+        "id": "Bundle.entry.request",
+        "path": "Bundle.entry.request",
+        "max": "0"
+      },
+      {
+        "id": "Bundle.entry.response",
+        "path": "Bundle.entry.response",
+        "max": "0"
+      }
+    ]
+  }
+}

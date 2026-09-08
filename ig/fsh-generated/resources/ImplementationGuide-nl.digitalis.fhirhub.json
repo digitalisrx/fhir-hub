@@ -262,6 +262,30 @@
       },
       {
         "reference": {
+          "reference": "StructureDefinition/fhirhub-SurveillanceFinding"
+        },
+        "name": "Medication surveillance finding",
+        "description": "One signal from Dutch medication surveillance: a medisch-farmaceutische beslisregel from the G-Standaard, or one of the classic allergy, age, duplicate-medication and dose checks. Route on identifier, show code.text, and read the full text from detail.",
+        "exampleBoolean": false
+      },
+      {
+        "reference": {
+          "reference": "StructureDefinition/fhirhub-SurveillanceBundle"
+        },
+        "name": "Medication surveillance output",
+        "description": "What POST /fhir/surveillance/$check-medication-request and POST /fhir/surveillance/$check-medication-statement return: one DetectedIssue per signal, in the order the clinical-rules report listed them. An empty Bundle means the check ran and no rule fired — every way for the check not to happen is a 500 instead, never a 200 with no findings.",
+        "exampleBoolean": false
+      },
+      {
+        "reference": {
+          "reference": "Bundle/ExampleSurveillanceBundle"
+        },
+        "name": "Medication surveillance response",
+        "description": "Two signals from one report: a nierfunctie beslisregel firing red on a proposed metformine, and an allergy check that ran and matched nothing. Bundle.identifier is the report id to quote in a support question.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceBundle"
+      },
+      {
+        "reference": {
           "reference": "StructureDefinition/ext-MedicationRequest.OpiumActClassification"
         },
         "name": "Opiumwet classification",

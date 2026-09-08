@@ -91,6 +91,8 @@ class IgCanonicalsTest {
 		assertThat(Profiles.RESULT_BUNDLE).startsWith(CANONICAL + "/");
 		assertThat(Profiles.SURVEILLANCE_INPUT).startsWith(CANONICAL + "/");
 		assertThat(Profiles.SURVEILLANCE_STATEMENT_INPUT).startsWith(CANONICAL + "/");
+		assertThat(Profiles.SURVEILLANCE_BUNDLE).startsWith(CANONICAL + "/");
+		assertThat(Profiles.SURVEILLANCE_FINDING).startsWith(CANONICAL + "/");
 	}
 
 	/**
@@ -141,7 +143,8 @@ class IgCanonicalsTest {
 
 		for (String canonical : List.of(Profiles.FORMULARY_SESSION_INPUT, Profiles.CREATERX_SESSION_INPUT,
 				Profiles.SESSION_OUTPUT, Profiles.RESULT_BUNDLE, Profiles.SURVEILLANCE_INPUT,
-				Profiles.SURVEILLANCE_STATEMENT_INPUT)) {
+				Profiles.SURVEILLANCE_STATEMENT_INPUT, Profiles.SURVEILLANCE_BUNDLE,
+				Profiles.SURVEILLANCE_FINDING)) {
 			assertThat(idIn(fsh, canonical)).as("%s is defined in ig/input/fsh", canonical).isTrue();
 		}
 	}

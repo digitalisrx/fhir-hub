@@ -8,6 +8,14 @@
     "endLine": 157
   },
   {
+    "outputFile": "Bundle-ExampleSurveillanceBundle.json",
+    "fshName": "ExampleSurveillanceBundle",
+    "fshType": "Instance",
+    "fshFile": "examples.fsh",
+    "startLine": 490,
+    "endLine": 502
+  },
+  {
     "outputFile": "CodeSystem-gstandaard-bijzonder-kenmerk.json",
     "fshName": "GStandaardBijzonderKenmerk",
     "fshType": "CodeSystem",
@@ -184,20 +192,36 @@
     "endLine": 156
   },
   {
+    "outputFile": "StructureDefinition-fhirhub-SurveillanceBundle.json",
+    "fshName": "FhirHubSurveillanceBundle",
+    "fshType": "Profile",
+    "fshFile": "profiles-surveillance.fsh",
+    "startLine": 214,
+    "endLine": 240
+  },
+  {
+    "outputFile": "StructureDefinition-fhirhub-SurveillanceFinding.json",
+    "fshName": "FhirHubSurveillanceFinding",
+    "fshType": "Profile",
+    "fshFile": "profiles-surveillance.fsh",
+    "startLine": 242,
+    "endLine": 285
+  },
+  {
     "outputFile": "StructureDefinition-fhirhub-SurveillanceInput.json",
     "fshName": "FhirHubSurveillanceInput",
     "fshType": "Profile",
     "fshFile": "profiles-surveillance.fsh",
-    "startLine": 22,
-    "endLine": 102
+    "startLine": 28,
+    "endLine": 103
   },
   {
     "outputFile": "StructureDefinition-fhirhub-SurveillanceStatementInput.json",
     "fshName": "FhirHubSurveillanceStatementInput",
     "fshType": "Profile",
     "fshFile": "profiles-surveillance.fsh",
-    "startLine": 119,
-    "endLine": 180
+    "startLine": 120,
+    "endLine": 179
   },
   {
     "outputFile": "ValueSet-allergy-causative-agent.json",

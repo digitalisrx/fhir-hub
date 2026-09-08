@@ -13,13 +13,10 @@ GET    /fhir/evs/$session-result?session=  ->  Bundle (MedicationRequest, Commun
 GET    /fhir/evs/metadata                  ->  CapabilityStatement (unauthenticated)
 ```
 
-Start at [Prescriptor](prescriptor.html), then [The Prescriptor flow](flow.html) for how the three
-calls fit together.
+### Surveillance
 
-### Surveillance — *the response is a preview*
-
-Medication surveillance on its own: patient context and one or more proposed prescriptions in, the
-signals that fire out. No user interface, no session, no browser round trip.
+Medication surveillance on its own: patient context and medication in, the signals that fire out.
+No user interface, no session, no browser round trip.
 
 ```
 POST   /fhir/surveillance/$check-medication-request     Parameters  ->  Bundle (DetectedIssue)
@@ -31,24 +28,12 @@ Both halves of Dutch medication surveillance answer this one call: the G-Standaa
 medisch-farmaceutische beslisregels, and the classic allergy, age, duplicate-medication and dose
 checks.
 
-**The request contract is stable; the response is `experimental`.** What you send has been
-published and enforced since 0.2.0 and did not change when the check went live at 0.3.0. The answer
-is newer, no response profile is published for it, and there are three classes of rule it cannot
-fire yet. **An empty `Bundle` means the check ran and nothing fired** — every way for it not to run
-is a 500, never a 200 with no findings.
+**Request and response both have a profile**, so the response shape is described by
+`fhirhub-SurveillanceBundle` rather than by prose. There are two classes of rule it cannot fire
+yet. **An empty `Bundle` means the check ran and nothing fired** — every way for it not to run is a
+500, never a 200 with no findings.
 
-Start at [Surveillance](surveillance.html).
-
-### What the two share
-
-Two contracts, two FHIR bases, one interface. The credentials, the content types, the error shape,
-the payload profiles for patient, current medication, allergies, contra-indications and lab
-results, the code systems and the release number are the same for both — so a system that already
-opens Prescriptor sessions has no new payload to learn, only a new address to post to. There is no
-resource REST API and no search on either base.
-
-See [Conventions](conventions.html) for content types, formats and how a malformed request is
-reported, and [Authentication](authentication.html) for the credentials.
+There is no resource REST API and no search on either base.
 
 ### Where to start
 
@@ -63,10 +48,10 @@ reported, and [Authentication](authentication.html) for the credentials.
 
 ### The machine-readable half
 
-Every payload has a `StructureDefinition`, and they are not decoration: a request body is
-validated against its profile *before* anything else happens, so what is written here is what
-the service enforces. The [Artifacts](artifacts.html) page indexes all of them; the ones you will
-validate against directly are:
+Every payload has a `StructureDefinition`, and they are not decoration: a request body is validated
+against its profile *before* anything else happens, so what is written here is what the service
+enforces. The [Artifacts](artifacts.html) page indexes all of them; these are the ones you validate
+against directly:
 
 | | Payload | Profile |
 | --- | --- | --- |
@@ -74,24 +59,25 @@ validate against directly are:
 | Prescriptor | `$createrx-session` request | [fhirhub-CreateRxSessionInput](StructureDefinition-fhirhub-CreateRxSessionInput.html) |
 | Prescriptor | session response | [fhirhub-SessionOutput](StructureDefinition-fhirhub-SessionOutput.html) |
 | Prescriptor | `$session-result` response | [fhirhub-ResultBundle](StructureDefinition-fhirhub-ResultBundle.html) |
-| Surveillance | `$check-medication-request` input | [fhirhub-SurveillanceInput](StructureDefinition-fhirhub-SurveillanceInput.html) — `experimental`, because the response shape is not final. There is no profile for the response |
+| Surveillance | `$check-medication-request` input | [fhirhub-SurveillanceInput](StructureDefinition-fhirhub-SurveillanceInput.html) |
 | Surveillance | `$check-medication-statement` input | [fhirhub-SurveillanceStatementInput](StructureDefinition-fhirhub-SurveillanceStatementInput.html) — the dossier check. Defines no `prescription` parameter, and the slicing is closed |
+| Surveillance | response, both operations | [fhirhub-SurveillanceBundle](StructureDefinition-fhirhub-SurveillanceBundle.html), whose entries are [fhirhub-SurveillanceFinding](StructureDefinition-fhirhub-SurveillanceFinding.html) |
 
 The resource profiles inside those payloads — patient, current medication, allergies,
-contra-indications, lab results — are shared by both applications, and are on the
-[Profiles](profiles.html) page.
-
-The example instances on those pages are the same payloads that appear in the prose, and each
-one is validated against the profile it claims on every build of this guide — so an example
-here cannot contradict either the profile or the running service.
+contra-indications, lab results — are shared by both applications and are on the
+[Profiles](profiles.html) page. The example instances are the same payloads that appear in the
+prose, each validated against the profile it claims on every build, so an example here cannot
+contradict either the profile or the running service.
 
 ### Status
 
-This is release **0.3.0**, `draft`. Read [Versioning and change policy](versioning.html) before
-you go live: while the guide is `draft`, a breaking change can still arrive at a minor version,
-and the policy says how you will be told. [Current limitations](limitations.html) lists what you
-may expect to be able to do and cannot yet.
+**Work in progress.** Nothing is published at the canonical yet, no integrator is in production,
+and **every part of this specification may change without notice** — the payloads, the profiles,
+the operation names and the base paths included. Every artifact is `draft`, and none is singled out
+as more or less provisional than the rest.
 
-### Getting in touch
+Read [Versioning and change policy](versioning.html) before you go live: it is the policy that
+takes effect with the first published release, and it says how you will be told about a change.
+[Current limitations](limitations.html) lists what you may expect to be able to do and cannot yet.
 
 Questions, or a case this guide does not cover: contact Digitalis.

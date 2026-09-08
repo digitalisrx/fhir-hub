@@ -32,12 +32,19 @@ import nl.digitalis.fhirhub.model.SurveillanceReport;
  * in it rather than passing an empty one on. That is the invariant the whole contract rests on,
  * and it is enforced there, not here.
  *
- * <h2>No response profile</h2>
- * Nothing is asserted in {@code meta.profile} and no {@code StructureDefinition} is published for
- * this Bundle yet — the house rule is that a profile is a promise, and this shape has produced
- * instances for days rather than years. What the Implementation Guide describes instead is the
- * elements below, and it tells integrators to read {@code severity}, {@code code.text} and
- * {@code detail} and to treat everything else as additive.
+ * <h2>The published profile is the other half of this class</h2>
+ * {@code fhirhub-SurveillanceBundle} and {@code fhirhub-SurveillanceFinding}
+ * ({@code ig/input/fsh/profiles-surveillance.fsh}) describe what this mapper emits, element for
+ * element: the fixed {@code collection} type and {@code final} status, the two identifier systems,
+ * {@code code} with text and no coding, {@code detail} as plain text, and {@code implicated} as a
+ * logical reference. They are a promise to integrators, so a change here that moves a cardinality
+ * has to move the profile with it —
+ * {@code OutboundPayloadConformanceTest.theSurveillanceBundleSatisfiesItsProfile} fails when the
+ * two disagree.
+ *
+ * <p>Nothing is asserted in {@code meta.profile}, even though the Bundle validates clean against
+ * it: the Implementation Guide tells integrators not to route on {@code meta.profile}, and that
+ * sentence and this decision have to move together.
  */
 @Component
 public class SurveillanceBundleMapper {

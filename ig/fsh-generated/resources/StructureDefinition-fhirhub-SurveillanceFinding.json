@@ -1,0 +1,141 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "fhirhub-SurveillanceFinding",
+  "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding",
+  "version": "0.4.0",
+  "name": "FhirHubSurveillanceFinding",
+  "title": "Medication surveillance finding",
+  "status": "draft",
+  "description": "One signal from Dutch medication surveillance: a medisch-farmaceutische beslisregel from the G-Standaard, or one of the classic allergy, age, duplicate-medication and dose checks. Route on identifier, show code.text, and read the full text from detail.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "DetectedIssue",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DetectedIssue",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "DetectedIssue.identifier",
+        "path": "DetectedIssue.identifier",
+        "short": "The rule's own id — stable across reports; route and de-duplicate on this",
+        "comment": "MFB-0000000068-v000006 for a beslisregel, hub-doublemedication-prkA-1090 and its siblings for the classic checks. An identifier rather than a code because the G-Standaard's editors publish, revise and withdraw these on their own schedule, so no code system defined here would stay current."
+      },
+      {
+        "id": "DetectedIssue.identifier.system",
+        "path": "DetectedIssue.identifier.system",
+        "min": 1,
+        "fixedUri": "http://spec.digitalis.nl/fhir/sid/crs-rule"
+      },
+      {
+        "id": "DetectedIssue.identifier.value",
+        "path": "DetectedIssue.identifier.value",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.status",
+        "path": "DetectedIssue.status",
+        "comment": "A report is a finished statement about the medication as it was sent; there is no preliminary form of it.",
+        "fixedCode": "final"
+      },
+      {
+        "id": "DetectedIssue.code",
+        "path": "DetectedIssue.code",
+        "short": "The title to show: the message's own where it has one, the rule's otherwise",
+        "comment": "Text and no coding, because there is nothing honest to code it with: the rule identifier is an identifier, and FHIR's own DetectedIssue categories (drug interaction, duplicate therapy, and so on) are a classification the upstream does not make and this interface would have to guess at from a rule id. Whether Digitalis should mint a code system for the class of check — mfb, allergy, dosage, double-medication, age — is an open question; if it is answered, this cardinality widens, which is an additive change. Until then: route on identifier, show code.text.",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.code.coding",
+        "path": "DetectedIssue.code.coding",
+        "max": "0"
+      },
+      {
+        "id": "DetectedIssue.code.text",
+        "path": "DetectedIssue.code.text",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.severity",
+        "path": "DetectedIssue.severity",
+        "short": "high, moderate or low, from the rule's own red, orange and green",
+        "comment": "Absent where the rule stated no level, which is not the same as the mildest one. Note what low means: a rule that fired and concluded that no action is needed — 'Dit is GEEN contra-indicatie', 'Bij deze interactie is GEEN actie nodig'. That is a finding with a reassuring text rather than a near-miss, and it answers a question the prescriber's own dossier raised. A host that hides low hides that answer."
+      },
+      {
+        "id": "DetectedIssue.patient",
+        "path": "DetectedIssue.patient",
+        "comment": "No patient identity comes back. This service is stateless and never stored the Patient the host sent, so there is nothing to reference; correlate a finding with your own record through implicated.identifier, which carries the id you put on the resource.",
+        "max": "0"
+      },
+      {
+        "id": "DetectedIssue.identified[x]",
+        "path": "DetectedIssue.identified[x]",
+        "short": "The report's timestamp, repeated per finding",
+        "type": [
+          {
+            "code": "dateTime"
+          }
+        ]
+      },
+      {
+        "id": "DetectedIssue.implicated",
+        "path": "DetectedIssue.implicated",
+        "short": "The medication the risk is in, as a logical reference to the record you sent",
+        "comment": "identifier.value is the id you put on that resource, and type says whether it was a MedicationRequest you proposed or a MedicationStatement the patient already takes — which is decided by the operation you called, because the upstream echoes the same marking back either way. Set an id on the resources you send, or you get a positional identifier that is stable only within the request. Only medication appears here: FHIR defines implicated as the resources implicated in the detected risk, so a lab result, an allergy and a contra-indication are evidence rather than the subject of the finding. Note that for an allergy signal this element carries the verdict — low with no implicated means the allergy was checked and nothing matched, and high naming a drug means it did, while the rule's text reads the same in both cases.",
+        "constraint": [
+          {
+            "key": "fhirhub-logical-reference",
+            "severity": "error",
+            "human": "implicated names the host's own record by the id it sent: a type and an identifier, never a resolvable URL. There is nothing to resolve — the resources came in on the request and are not stored here.",
+            "expression": "reference.empty() and type.exists() and identifier.value.exists()",
+            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding"
+          },
+          {
+            "key": "fhirhub-implicated-medication",
+            "severity": "error",
+            "human": "implicated.type is MedicationRequest for a drug this check had under test on $check-medication-request, and MedicationStatement for one under test on $check-medication-statement or carried as dossier context.",
+            "expression": "type = 'MedicationRequest' or type = 'MedicationStatement'",
+            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding"
+          }
+        ]
+      },
+      {
+        "id": "DetectedIssue.implicated.reference",
+        "path": "DetectedIssue.implicated.reference",
+        "max": "0"
+      },
+      {
+        "id": "DetectedIssue.implicated.type",
+        "path": "DetectedIssue.implicated.type",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.implicated.identifier",
+        "path": "DetectedIssue.implicated.identifier",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.implicated.identifier.value",
+        "path": "DetectedIssue.implicated.identifier.value",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.evidence",
+        "path": "DetectedIssue.evidence",
+        "short": "What the rule read: the drug's codes, a lab result with its value, a contra-indication's code",
+        "comment": "A drug arrives as its PRK, GPK, HPK and ATC together in one CodeableConcept; a lab result as its LOINC code with CodeableConcept.text carrying the determination and the value it was measured at ('kreatinineklaring: 35'), because the value belongs with the code it was measured for. evidence.code rather than evidence.detail, because the codes are the part a receiving system can act on without resolving anything: it already knows which PRK it sent."
+      },
+      {
+        "id": "DetectedIssue.evidence.code",
+        "path": "DetectedIssue.evidence.code",
+        "min": 1
+      },
+      {
+        "id": "DetectedIssue.detail",
+        "path": "DetectedIssue.detail",
+        "short": "The rule's full text, as plain text",
+        "comment": "The upstream sends XHTML and this is a line-per-block rendering of it, with the numbered dosing steps still numbered. Plain text on purpose: a FHIR narrative is validated against a fixed list of permitted elements and attributes, and the upstream's markup carries at least one that is not on it — so carrying it through would put the validity of every response at the mercy of the next rule an editor writes."
+      }
+    ]
+  }
+}

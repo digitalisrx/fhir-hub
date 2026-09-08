@@ -44,21 +44,27 @@ import nl.digitalis.fhirhub.validation.ProfileValidator;
  * every way for the check not to run — an unreachable Hub, a SOAP fault, a response with no report
  * in it — is a 500 with an {@code OperationOutcome}, and {@code MedicationSurveillanceResponseParser}
  * is where that is enforced. This is the same rule that makes an unresolvable G-Standaard code a
- * 400 rather than a dropped drug, and it is the reason this operation existed as a published 501
- * for a release before it existed as an implementation.
+ * 400 rather than a dropped drug.
  *
  * <p><strong>What a 200 does not cover</strong> is recorded for integrators in the Implementation
  * Guide rather than only here, because a host has to decide what to show a prescriber:
  * <ul>
  * <li><b>Dose rules that compare the prescribed daily dose against the defined daily dose cannot
  * fire</b>, because computing a PDD means decoding NHG Tabel 25 and this interface passes the
- * coded dosage through undecoded — see {@code MedicationSurveillanceRequestBuilder.drug}.
- * <li><b>Weight and height do not reach the Hub's dose check</b>, which reads them from NHG-coded
- * elements this interface does not send. Where a dose band needs a weight, the check answers with
- * a "data missing" signal rather than silently passing — so this one is visible in the response.
+ * coded dosage through undecoded — see {@code MedicationSurveillanceRequestBuilder.drug}. The dose
+ * <em>bands</em> are checked, which is the larger half of dose control.
+ * <li><b>A partial report is not distinguishable from a complete one.</b> {@code MbCompleteFacade}
+ * catches a failure of either engine and logs it, so a report carrying only what ran is a shape
+ * that can arrive, and the upstream does not say which half is missing. What this interface will
+ * never do is present nothing at all as an all-clear.
  * <li><b>The credentials are not adjudicated upstream</b> on this base, unlike a session. See
  * {@code HubClient}.
  * </ul>
+ *
+ * <p>Note that weight and height <em>do</em> reach the Hub's dose check: they are the two
+ * determinations sent in an NHG identity beside the LOINC one, because that check reads them only
+ * as {@code <NHG id="357">} and {@code <NHG id="560">}. See
+ * {@code LabDeterminations.NhgEquivalent} and {@code MedicationSurveillanceRequestBuilder.nhg}.
  *
  * <p>Declared non-idempotent, so HAPI exposes it over POST only. That is not a claim about side
  * effects — the check reads and stores nothing — but about the body: the request carries a

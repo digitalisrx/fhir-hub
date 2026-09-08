@@ -25,6 +25,9 @@
 [IcpcVS]: ValueSet-icpc-1-nl.html
 [LabDeterminationVS]: ValueSet-lab-determination.html
 [MedicationCodeVS]: ValueSet-medication-code.html
+[FhirHubSurveillanceFinding]: StructureDefinition-fhirhub-SurveillanceFinding.html
+[FhirHubSurveillanceBundle]: StructureDefinition-fhirhub-SurveillanceBundle.html
+[ExampleSurveillanceBundle]: Bundle-ExampleSurveillanceBundle.html
 [OpiumActClassification]: StructureDefinition-ext-MedicationRequest.OpiumActClassification.html
 [OpiumActVS]: ValueSet-opium-act-classification.html
 [DispensedMedicationCodeVS]: ValueSet-dispensed-medication-code.html

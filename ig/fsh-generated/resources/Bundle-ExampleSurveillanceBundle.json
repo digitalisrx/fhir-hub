@@ -1,0 +1,127 @@
+{
+  "resourceType": "Bundle",
+  "id": "ExampleSurveillanceBundle",
+  "meta": {
+    "profile": [
+      "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceBundle"
+    ]
+  },
+  "type": "collection",
+  "identifier": {
+    "system": "http://spec.digitalis.nl/fhir/sid/crs-report",
+    "value": "83327A6E-FAED-4448-A20E-EFEA660C7627"
+  },
+  "timestamp": "2026-09-07T11:11:16+02:00",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:6f1b2d34-5a67-4c89-b012-3456789abcde",
+      "resource": {
+        "resourceType": "DetectedIssue",
+        "id": "SurveillanceFindingNierfunctie",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding"
+          ]
+        },
+        "status": "final",
+        "identifier": [
+          {
+            "system": "http://spec.digitalis.nl/fhir/sid/crs-rule",
+            "value": "MFB-0000000068-v000006"
+          }
+        ],
+        "code": {
+          "text": "Nierfunctie: metformine"
+        },
+        "severity": "high",
+        "identifiedDateTime": "2026-09-07T11:11:16+02:00",
+        "implicated": [
+          {
+            "type": "MedicationRequest",
+            "identifier": {
+              "value": "rx-1"
+            },
+            "display": "METFORMINE TABLET   500MG"
+          }
+        ],
+        "detail": "Risico op lactaatacidose is verhoogd. Patiënt heeft creatinineklaring 30-60 ml/min.\n1. aanvankelijk 500 mg metformine 2x per dag\n2. vervolgens dosering geleidelijk verhogen tot standaardonderhoudsdosering",
+        "evidence": [
+          {
+            "code": [
+              {
+                "coding": [
+                  {
+                    "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+                    "code": "1090"
+                  },
+                  {
+                    "system": "urn:oid:2.16.840.1.113883.2.4.4.1",
+                    "code": "3816"
+                  },
+                  {
+                    "system": "http://www.whocc.no/atc",
+                    "code": "A10BA02"
+                  }
+                ],
+                "text": "METFORMINE TABLET   500MG"
+              }
+            ]
+          },
+          {
+            "code": [
+              {
+                "coding": [
+                  {
+                    "system": "http://loinc.org",
+                    "code": "62238-1"
+                  }
+                ],
+                "text": "kreatinineklaring: 35"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:2a3b4c5d-6e7f-4a8b-9c0d-1e2f3a4b5c6d",
+      "resource": {
+        "resourceType": "DetectedIssue",
+        "id": "SurveillanceFindingAllergyClear",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding"
+          ]
+        },
+        "status": "final",
+        "identifier": [
+          {
+            "system": "http://spec.digitalis.nl/fhir/sid/crs-rule",
+            "value": "hub-allergy-snk-10499"
+          }
+        ],
+        "code": {
+          "text": "Allergie (SNK)"
+        },
+        "severity": "low",
+        "identifiedDateTime": "2026-09-07T11:11:16+02:00",
+        "detail": "In het dossier is een allergie (PENICILLINES) geregistreerd voor het onderstaande middel.",
+        "evidence": [
+          {
+            "code": [
+              {
+                "coding": [
+                  {
+                    "system": "urn:oid:2.16.840.1.113883.2.4.4.1.750",
+                    "code": "10499"
+                  }
+                ],
+                "text": "PENICILLINES"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

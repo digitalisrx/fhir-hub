@@ -6,7 +6,6 @@
   "name": "FhirHubSurveillanceInput",
   "title": "$check-medication-request input",
   "status": "draft",
-  "experimental": true,
   "description": "The body of POST /fhir/surveillance/$check-medication-request: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue.",
   "fhirVersion": "4.0.1",
   "kind": "resource",

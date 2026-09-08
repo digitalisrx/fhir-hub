@@ -2,44 +2,17 @@
   "package-id": "nl.digitalis.fhirhub",
   "title": "Digitalis fhir-hub Implementation Guide",
   "canonical": "http://spec.digitalis.nl/fhir",
-  "introduction": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication-request weighs proposed prescriptions against a patient's dossier and answers with the signals that fire.",
+  "introduction": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication-request weighs proposed prescriptions against a patient's dossier and whose $check-medication-statement checks the dossier itself, both answering with the signals that fire.",
   "list": [
     {
       "version": "0.4.0",
       "date": "2026-09-07",
-      "desc": "Two breaking changes and one addition on the surveillance contract. The operation is renamed: $check-medication becomes $check-medication-request, and the old name is not served. prescription is now required there (1..*), so a request carrying only medicationStatement is refused where it was checked before, and the invariant fhirhub-something-to-check is removed with it. And a second operation answers that question properly: $check-medication-statement checks a patient’s current medication with every entry under test, on a profile of its own that accepts no prescription. The response shape is unchanged for both. Nothing on the EVS contract changed.",
+      "desc": "The Prescriptor session contract — $formulary-session, $createrx-session and $session-result — and the surveillance contract on a second FHIR base: $check-medication-request weighs proposed prescriptions against a patient's context, $check-medication-statement checks a patient's current medication with every entry under test, and both answer a Bundle of DetectedIssue. Draft: a breaking change can still arrive at a minor version.",
       "path": "http://spec.digitalis.nl/fhir/0.4.0",
       "status": "draft",
       "sequence": "Draft",
       "fhirversion": "4.0.1",
       "current": true
-    },
-    {
-      "version": "0.3.0",
-      "date": "2026-09-07",
-      "desc": "Implements $check-medication: the request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue. The request contract is unchanged from 0.2.0. Nothing on the EVS contract changed.",
-      "path": "http://spec.digitalis.nl/fhir/0.3.0",
-      "status": "draft",
-      "sequence": "Draft",
-      "fhirversion": "4.0.1"
-    },
-    {
-      "version": "0.2.0",
-      "date": "2026-09-02",
-      "desc": "Adds the medication-surveillance contract on a second FHIR base: $check-medication, its request profile and its example. The operation itself is not implemented and answers 501. Nothing on the EVS contract changed.",
-      "path": "http://spec.digitalis.nl/fhir/0.2.0",
-      "status": "draft",
-      "sequence": "Draft",
-      "fhirversion": "4.0.1"
-    },
-    {
-      "version": "0.1.0",
-      "date": "2026-08-28",
-      "desc": "First release. The three operations, 13 profiles, 2 extensions, 1 code system and 9 value sets.",
-      "path": "http://spec.digitalis.nl/fhir/0.1.0",
-      "status": "draft",
-      "sequence": "Draft",
-      "fhirversion": "4.0.1"
     }
   ]
 }

@@ -34,13 +34,36 @@ public final class Profiles {
 			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-ResultBundle";
 
 	/**
-	 * The request profile of {@code $check-medication-request}, on the surveillance base. It was
-	 * published and enforced for a release before the operation behind it was implemented, so that
-	 * an integrator could build a payload against the rules that would apply once the check went
-	 * live. There is deliberately no response profile — see {@code SurveillanceOperationProvider}.
+	 * The request profile of {@code $check-medication-request}, on the surveillance base. The
+	 * response has one too — {@link #SURVEILLANCE_BUNDLE}.
 	 */
 	public static final String SURVEILLANCE_INPUT =
 			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput";
+
+	/**
+	 * The response of both surveillance operations: a collection Bundle of
+	 * {@link #SURVEILLANCE_FINDING}, one entry per signal.
+	 *
+	 * <p>Unlike the constants above this one is not handed to {@code ProfileValidator} — outbound
+	 * payloads are not validated on the request path, because that would put the reference
+	 * validator in the path of every response for a payload this service built itself. It is here
+	 * because {@code OutboundPayloadConformanceTest} validates against it in the build, which is
+	 * where that gap is closed, and because {@code IgCanonicalsTest} then pins the FSH id against
+	 * this string.
+	 *
+	 * <p>Note that nothing asserts it in {@code meta.profile}. The Bundle does validate clean
+	 * against it, so claiming it would be honest — but the Implementation Guide tells integrators
+	 * not to route on {@code meta.profile}, and the two have to move together.
+	 */
+	public static final String SURVEILLANCE_BUNDLE =
+			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceBundle";
+
+	/**
+	 * One signal in that Bundle. Reached through {@link #SURVEILLANCE_BUNDLE}, which binds
+	 * {@code entry.resource} to it, so validating the Bundle validates every finding in it.
+	 */
+	public static final String SURVEILLANCE_FINDING =
+			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceFinding";
 
 	/**
 	 * The request profile of {@code $check-medication-statement}: the same context, a mandatory

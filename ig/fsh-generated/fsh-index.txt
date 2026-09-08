@@ -1,5 +1,6 @@
 Output File                                                            Name                               Type        FSH File                   Lines
 Bundle-ExampleResultBundle.json                                        ExampleResultBundle                Instance    examples.fsh               144 - 157
+Bundle-ExampleSurveillanceBundle.json                                  ExampleSurveillanceBundle          Instance    examples.fsh               490 - 502
 CodeSystem-gstandaard-bijzonder-kenmerk.json                           GStandaardBijzonderKenmerk         CodeSystem  terminology.fsh            35 - 45
 Parameters-ExampleCreateRxSessionInput.json                            ExampleCreateRxSessionInput        Instance    examples.fsh               190 - 206
 Parameters-ExampleFormularySessionInput.json                           ExampleFormularySessionInput       Instance    examples.fsh               62 - 85
@@ -22,8 +23,10 @@ StructureDefinition-fhirhub-PrescriptionInput.json                     FhirHubPr
 StructureDefinition-fhirhub-ResultBundle.json                          FhirHubResultBundle                Profile     profiles-output.fsh        16 - 34
 StructureDefinition-fhirhub-SessionInput.json                          FhirHubSessionInput                Profile     profiles-parameters.fsh    28 - 111
 StructureDefinition-fhirhub-SessionOutput.json                         FhirHubSessionOutput               Profile     profiles-parameters.fsh    133 - 156
-StructureDefinition-fhirhub-SurveillanceInput.json                     FhirHubSurveillanceInput           Profile     profiles-surveillance.fsh  22 - 102
-StructureDefinition-fhirhub-SurveillanceStatementInput.json            FhirHubSurveillanceStatementInput  Profile     profiles-surveillance.fsh  119 - 180
+StructureDefinition-fhirhub-SurveillanceBundle.json                    FhirHubSurveillanceBundle          Profile     profiles-surveillance.fsh  214 - 240
+StructureDefinition-fhirhub-SurveillanceFinding.json                   FhirHubSurveillanceFinding         Profile     profiles-surveillance.fsh  242 - 285
+StructureDefinition-fhirhub-SurveillanceInput.json                     FhirHubSurveillanceInput           Profile     profiles-surveillance.fsh  28 - 103
+StructureDefinition-fhirhub-SurveillanceStatementInput.json            FhirHubSurveillanceStatementInput  Profile     profiles-surveillance.fsh  120 - 179
 ValueSet-allergy-causative-agent.json                                  AllergyCausativeAgentVS            ValueSet    terminology.fsh            63 - 71
 ValueSet-contra-indication.json                                        ContraIndicationVS                 ValueSet    terminology.fsh            73 - 80
 ValueSet-dispensed-medication-code.json                                DispensedMedicationCodeVS          ValueSet    terminology.fsh            91 - 100

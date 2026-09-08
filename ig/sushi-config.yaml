@@ -87,10 +87,12 @@ pages:
 
 # One menu group per application, because they are two contracts on two FHIR bases and a reader
 # is integrating with one of them, not with "the interface". Everything outside those two groups
-# is shared by both. "(preview)" belongs in the menu rather than only on the page it labels: a
-# reader has to be able to see that the response shape is not final before they click into it. The
-# request contract is not a preview and has not changed since 0.2.0 — it is the answer that is
-# young, and there is no profile for it yet.
+# is shared by both.
+#
+# Neither group is labelled. Surveillance carried a "(preview)" marker while its response had no
+# profile; it has one now, and the marker had become a claim that the rest of the guide was
+# settled by comparison. Nothing here is: the whole guide is work in progress and says so on the
+# front page, which is one statement to keep true rather than a label per menu group.
 menu:
   Home: index.html
   Getting started:
@@ -104,7 +106,7 @@ menu:
     POST /fhir/evs/$formulary-session: formulary-session.html
     POST /fhir/evs/$createrx-session: createrx-session.html
     GET /fhir/evs/$session-result: session-result.html
-  Surveillance (preview):
+  Surveillance:
     What it is: surveillance.html
     POST /fhir/surveillance/$check-medication-request: check-medication-request.html
     POST /fhir/surveillance/$check-medication-statement: check-medication-statement.html

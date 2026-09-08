@@ -65,21 +65,58 @@ class OutboundPayloadConformanceTest {
 	}
 
 	/**
-	 * The surveillance Bundle is validated against base R4 and against no profile, because none is
-	 * published for it — see {@code SurveillanceBundleMapper}. That is a weaker check than the one
-	 * above and still worth having: it is what would catch a DetectedIssue missing its mandatory
-	 * status, an identifier without a system, or a reference that is neither a URL nor an
-	 * identifier. Every response of this contract is built by that mapper, and nothing else
-	 * validates it.
+	 * The surveillance response has a published profile, so this is no longer the weaker check it
+	 * was: {@code fhirhub-SurveillanceBundle} states the fixed {@code collection} type, the two
+	 * identifier systems, {@code code} with text and no coding, and {@code implicated} as a
+	 * logical reference — and every one of those is a claim about what
+	 * {@code SurveillanceBundleMapper} emits. This is what fails when the mapper and the profile
+	 * drift apart, in either direction.
 	 */
 	@Test
-	void theSurveillanceBundleIsValidFhir() {
-		Bundle bundle = surveillanceMapper.toBundle(
-				new MedicationSurveillanceResponseParser().parse(
-						Fixtures.hubXml("medication-surveillance-response.xml")),
+	void theSurveillanceBundleSatisfiesItsProfile() {
+		assertThat(errorsIn(surveillanceBundle(
+				"medication-surveillance-response.xml",
+				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST),
+				Profiles.SURVEILLANCE_BUNDLE)).isEmpty();
+	}
+
+	/**
+	 * $check-medication-statement answers the same profile, and the one element that differs is the
+	 * one a profile can get wrong: {@code implicated.type} names a {@code MedicationStatement}
+	 * here where the request check names a {@code MedicationRequest}. Both have to pass
+	 * {@code fhirhub-implicated-medication}.
+	 */
+	@Test
+	void theStatementCheckBundleSatisfiesTheSameProfile() {
+		assertThat(errorsIn(surveillanceBundle(
+				"medication-surveillance-response.xml",
+				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_STATEMENT),
+				Profiles.SURVEILLANCE_BUNDLE)).isEmpty();
+	}
+
+	/**
+	 * The check ran and nothing fired, which is the one outcome that must be a conformant 200. It
+	 * is also the shape a cardinality mistake in the profile would break first: an {@code entry}
+	 * made 1..* to look thorough would turn every all-clear into a non-conformant response.
+	 *
+	 * <p>Note what this test does <em>not</em> assert: that an empty Bundle is a legitimate answer
+	 * at all. That is enforced in {@code MedicationSurveillanceResponseParser}, which refuses a
+	 * response carrying no report rather than passing an empty one on, and pinned by
+	 * {@code SurveillanceIntegrationTest.refusesToTurnAFailedCheckIntoAnAllClear}. A profile cannot
+	 * tell "no findings" from "no answer".
+	 */
+	@Test
+	void anEmptySurveillanceBundleSatisfiesItsProfile() {
+		Bundle bundle = surveillanceBundle("empty-report-response.xml",
 				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
-		assertThat(errorsIn(bundle, null)).isEmpty();
+		assertThat(bundle.getEntry()).isEmpty();
+		assertThat(errorsIn(bundle, Profiles.SURVEILLANCE_BUNDLE)).isEmpty();
+	}
+
+	private Bundle surveillanceBundle(String fixture, SurveillanceBundleMapper.DrugsUnderTest underTest) {
+		return surveillanceMapper.toBundle(
+				new MedicationSurveillanceResponseParser().parse(Fixtures.hubXml(fixture)), underTest);
 	}
 
 	private List<String> errorsIn(Bundle bundle) {

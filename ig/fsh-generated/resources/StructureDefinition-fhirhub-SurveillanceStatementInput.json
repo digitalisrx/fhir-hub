@@ -6,7 +6,6 @@
   "name": "FhirHubSurveillanceStatementInput",
   "title": "$check-medication-statement input",
   "status": "draft",
-  "experimental": true,
   "description": "The body of POST /fhir/surveillance/$check-medication-statement: a patient's context and the medication they are already taking, with every entry under test rather than serving as the background to a proposal. The signals come back as a Bundle of DetectedIssue, exactly as for $check-medication-request.",
   "fhirVersion": "4.0.1",
   "kind": "resource",
