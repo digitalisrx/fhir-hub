@@ -2,9 +2,9 @@
 
 ### Prescriptor
 
-Prescribing, in Prescriptor's own user interface. Your system opens a session, hands the browser
-over, and collects the prescriptions and patient advice that came out. Medication surveillance runs
-inside the session, and the care provider sees the signals in Prescriptor.
+Prescribing in Prescriptor's own interface: your system opens a session, hands the browser over,
+and collects the prescriptions and patient advice. Surveillance runs inside the session, and the
+care provider sees the signals in Prescriptor.
 
 ```
 POST   /fhir/evs/$formulary-session        Parameters  ->  Parameters (sessionId, url)
@@ -16,7 +16,7 @@ GET    /fhir/evs/metadata                  ->  CapabilityStatement (unauthentica
 ### Surveillance
 
 Medication surveillance on its own: patient context and medication in, the signals that fire out.
-No user interface, no session, no browser round trip.
+No interface, no session, no browser round trip.
 
 ```
 POST   /fhir/surveillance/$check-medication-request     Parameters  ->  Bundle (DetectedIssue)
@@ -24,16 +24,16 @@ POST   /fhir/surveillance/$check-medication-statement   Parameters  ->  Bundle (
 GET    /fhir/surveillance/metadata                      ->  CapabilityStatement (unauthenticated)
 ```
 
-Both halves of Dutch medication surveillance answer this one call: the G-Standaard's
+One call answers both halves of Dutch medication surveillance: the G-Standaard's
 medisch-farmaceutische beslisregels, and the classic allergy, age, duplicate-medication and dose
 checks.
 
 **Request and response both have a profile**, so the response shape is described by
-`fhirhub-SurveillanceBundle` rather than by prose. There are two classes of rule it cannot fire
-yet. **An empty `Bundle` means the check ran and nothing fired** — every way for it not to run is a
-500, never a 200 with no findings.
+`fhirhub-SurveillanceBundle` rather than by prose. **An empty `Bundle` means the check ran and
+nothing fired** — every way for it not to run is a 500, never a 200 with no findings. Two classes
+of rule cannot fire yet.
 
-There is no resource REST API and no search on either base.
+Neither base has a resource REST API or search.
 
 ### Where to start
 
@@ -48,10 +48,9 @@ There is no resource REST API and no search on either base.
 
 ### The machine-readable half
 
-Every payload has a `StructureDefinition`, and they are not decoration: a request body is validated
-against its profile *before* anything else happens, so what is written here is what the service
-enforces. The [Artifacts](artifacts.html) page indexes all of them; these are the ones you validate
-against directly:
+Every payload has a `StructureDefinition`, and a request body is validated against its profile
+*before* anything else happens — so what is written here is what the service enforces. The
+[Artifacts](artifacts.html) page indexes all of them; these are the ones you validate against:
 
 | | Payload | Profile |
 | --- | --- | --- |
@@ -64,20 +63,17 @@ against directly:
 | Surveillance | response, both operations | [fhirhub-SurveillanceBundle](StructureDefinition-fhirhub-SurveillanceBundle.html), whose entries are [fhirhub-SurveillanceFinding](StructureDefinition-fhirhub-SurveillanceFinding.html) |
 
 The resource profiles inside those payloads — patient, current medication, allergies,
-contra-indications, lab results — are shared by both applications and are on the
-[Profiles](profiles.html) page. The example instances are the same payloads that appear in the
-prose, each validated against the profile it claims on every build, so an example here cannot
-contradict either the profile or the running service.
+contra-indications, lab results — are shared by both applications and live on the
+[Profiles](profiles.html) page. The examples are the payloads from the prose, validated against
+their profile on every build, so an example cannot contradict the profile or the service.
 
 ### Status
 
 **Work in progress.** Nothing is published at the canonical yet, no integrator is in production,
-and **every part of this specification may change without notice** — the payloads, the profiles,
-the operation names and the base paths included. Every artifact is `draft`, and none is singled out
-as more or less provisional than the rest.
+and **every part of this specification may change without notice** — payloads, profiles, operation
+names, base paths. Every artifact is `draft`.
 
-Read [Versioning and change policy](versioning.html) before you go live: it is the policy that
-takes effect with the first published release, and it says how you will be told about a change.
+[Versioning and change policy](versioning.html) takes effect with the first published release.
 [Current limitations](limitations.html) lists what you may expect to be able to do and cannot yet.
 
 Questions, or a case this guide does not cover: contact Digitalis.

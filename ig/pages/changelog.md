@@ -1,13 +1,11 @@
-Every release of this guide, newest first. What a version number promises is in
-[Versioning and change policy](versioning.html). Each entry names the version, the date it was
-published, and every change grouped by whether it can affect a payload you already send. A release
-with no **Breaking** heading broke nothing.
+Every release of this guide, newest first, each naming its version, publication date and changes.
+What a version number promises is in [Versioning and change policy](versioning.html); a release with
+no **Breaking** heading broke nothing.
 
 ### 0.4.0 — current
 
-`draft`, 2026-09-07. The guide is in development and nothing has been published at the canonical
-yet, so nothing here is reported as changed — and every part of it may still change without
-notice.
+`draft`, 2026-09-07. In development: nothing has been published at the canonical yet, so nothing
+here is reported as changed — and every part of it may still change without notice.
 
 **Prescriptor**, on `/fhir/evs`:
 
@@ -32,22 +30,21 @@ notice.
   sent by the `id` you gave them, and the rule's own `identifier`. `Bundle.identifier` carries the
   report id, which is what Digitalis support asks for
 - the response has a profile — `fhirhub-SurveillanceBundle`, whose entries are
-  `fhirhub-SurveillanceFinding` — so you can validate what you receive instead of reading prose
-  about it. It describes what the service emits today, and the severity mapping and the way a
-  rule's text arrives are the parts most likely to move. `code.coding` is `0..0` and the rule text
-  is plain, both deliberately; widening either is an additive change
+  `fhirhub-SurveillanceFinding` — so you can validate what you receive. The severity mapping and
+  the way a rule's text arrives are the parts most likely to move; `code.coding` is `0..0` and the
+  rule text is plain, both deliberately, and widening either is additive
 - **an empty `Bundle` means the check ran and nothing fired.** Every way for the check not to
-  happen is a 500 with an `OperationOutcome`, never a 200 with no findings
+  happen is a 500, never a 200 with no findings
 
 `implicated` names a `MedicationRequest` from the first operation and a `MedicationStatement` from
-the second: the upstream cannot tell the two apart, so the reference type is decided here. Set an
-`id` on the resources you send, or you get a positional identifier that is stable only within the
-request.
+the second, because the upstream cannot tell the two apart. Set an `id` on the resources you send,
+or you get a positional identifier that is stable only within the request.
 
-**Shared by both bases**: the credentials, the content types, the error shape, the resource
-profiles for patient, current medication, allergies, contra-indications and lab results, the
-G-Standaard code systems, the LOINC lab determinations with their units, the 400 on a drug code the
-G-Standaard cannot resolve, and one release number.
+**Shared by both bases**: the credentials, content types, error shape, the resource profiles for
+patient, current medication, allergies, contra-indications and lab results, the G-Standaard code
+systems, the LOINC lab determinations with their units, the 400 on a drug code the G-Standaard
+cannot resolve, and one release number.
 
-Known gaps are listed under [Current limitations](limitations.html). The one worth repeating: the
+Known gaps are under [Current limitations](limitations.html). The one worth repeating: the
 artifacts are `draft`, so a breaking change can still arrive at a minor version.
+

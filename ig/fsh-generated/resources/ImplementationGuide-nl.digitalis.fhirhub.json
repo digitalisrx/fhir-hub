@@ -254,6 +254,22 @@
       },
       {
         "reference": {
+          "reference": "Observation/obs-lengte-cm"
+        },
+        "name": "Lengte in centimeters",
+        "description": "A body height of 178 cm, LOINC 8302-2, in the unit the G-Standaard dose model works in.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation"
+      },
+      {
+        "reference": {
+          "reference": "Observation/obs-lengte-m"
+        },
+        "name": "Lengte in meters",
+        "description": "The same height as 1.78 m, LOINC 8302-2. Metres are converted exactly, so the dose model reads 178 cm either way.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation"
+      },
+      {
+        "reference": {
           "reference": "ValueSet/medication-code"
         },
         "name": "Medication code (PRK or HPK)",

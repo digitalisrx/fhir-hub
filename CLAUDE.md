@@ -398,6 +398,15 @@ a service that fails on the first request. What it needs, and how each absence s
 Cost, measured and recorded in README under *Enforcement*: +44 MB and +27 jars, ~3 s for the first
 validation (moved into startup by `warmUpValidator`), ~70 ms per request after that.
 
+**A nameless `Parameters.parameter` is refused before the validator sees it, and that guard is not
+redundant.** `ParametersValidator.validateParameter` looks the name up in a `Map.ofEntries`, which
+throws on a null key rather than missing, so org.hl7.fhir.validation 6.9.12 dies with an NPE before
+it can report the `name` base R4 requires — and HAPI renders the crash as HAPI-0389, a 500 saying
+this service failed. `ProfileValidator.refuseNamelessParameters` makes it a 400, and runs *before*
+the `enabled` check because every mapper looks parameters up by name: with validation off the
+parameter would not be an error but an omission. `FhirHubIntegrationTest.refusesAParameterWithNoName`
+pins the status.
+
 **It also decides the XML this service sends, which is why `XmlWriter` has a line that looks
 redundant.** `hapi-fhir-validation` brings Woodstox, which wins `XMLOutputFactory.newInstance()` and
 serialises an empty element as `<medication/>` where the JDK writes `<medication></medication>` — so

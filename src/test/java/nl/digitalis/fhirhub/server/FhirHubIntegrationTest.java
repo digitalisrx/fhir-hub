@@ -310,6 +310,35 @@ class FhirHubIntegrationTest {
 		assertThat(outcome.getIssueFirstRep().getDiagnostics()).contains("endSessionUrl");
 	}
 
+	/**
+	 * A parameter with no name is a 400, and the reason this is pinned over HTTP is that it used
+	 * to be a 500: the reference validator crashes on a nameless parameter
+	 * (NullPointerException on a null key in its table of standard parameter names) before it can
+	 * report the name base R4 requires, and HAPI renders that crash as HAPI-0389. A malformed
+	 * request must not arrive as this service having failed.
+	 */
+	@Test
+	void refusesAParameterWithNoName() {
+		Observation weight = new Observation();
+		weight.setStatus(Observation.ObservationStatus.FINAL);
+		weight.getCode().addCoding().setSystem(Systems.LOINC).setCode("29463-7");
+		weight.setEffective(new DateTimeType("2026-09-08"));
+		weight.setValue(new Quantity().setValue(70L)
+				.setSystem(Systems.UCUM).setCode("kg").setUnit("kg"));
+
+		Parameters in = sessionParameters();
+		in.addParameter().setResource(weight);
+
+		HttpResponse<String> response = postFhir("/fhir/evs/$formulary-session", in);
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		OperationOutcome outcome = parser.parseResource(OperationOutcome.class, response.body());
+		assertThat(outcome.getIssueFirstRep().getDiagnostics()).contains("has no name");
+
+		// Rejected before the session was opened, like any other non-conformant payload.
+		assertThat(prescriptor.findAll(postRequestedFor(anyUrl()))).isEmpty();
+	}
+
 	/** Integrators must be able to discover the operations before they hold credentials. */
 	@Test
 	void servesAnUnauthenticatedCapabilityStatement() {

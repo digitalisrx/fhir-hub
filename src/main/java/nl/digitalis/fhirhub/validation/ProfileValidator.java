@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.hl7.fhir.instance.model.api.IBaseOperationOutcome;
 import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.Parameters;
+import org.hl7.fhir.r4.model.Parameters.ParametersParameterComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,6 +66,8 @@ public class ProfileValidator {
 	 *                                 per validation error, each with its location
 	 */
 	public void validate(IBaseResource resource, String profileUrl) {
+		refuseNamelessParameters(resource);
+
 		if (!enabled) {
 			return;
 		}
@@ -91,5 +95,36 @@ public class ProfileValidator {
 		throw new InvalidRequestException(
 				"Payload does not conform to " + profileUrl + ": " + errors.getFirst().getMessage(),
 				outcome);
+	}
+
+	/**
+	 * Rejects a {@code Parameters.parameter} with no name, which the reference validator cannot
+	 * report because it crashes on one.
+	 *
+	 * <p>{@code ParametersValidator.validateParameter} reads the name and looks it up in a
+	 * {@code Map.ofEntries} of the standard parameter names; that map throws on a null key rather
+	 * than missing, so org.hl7.fhir.validation 6.9.12 dies with
+	 * {@code NullPointerException: Cannot invoke "Object.hashCode()" because "pk" is null} before
+	 * it can report the {@code name} that base R4 requires. HAPI renders that as HAPI-0389, so a
+	 * malformed request arrives as a 500 saying this service failed.
+	 *
+	 * <p>Deliberately before the {@code enabled} check: every mapper looks parameters up by name,
+	 * so with validation off a nameless parameter is not an error but an omission — a session
+	 * opened on a payload thinner than the one that was sent. Remove this when the upstream map
+	 * lookup is null-safe, not before.
+	 */
+	private void refuseNamelessParameters(IBaseResource resource) {
+		if (!(resource instanceof Parameters parameters)) {
+			return;
+		}
+
+		List<ParametersParameterComponent> all = parameters.getParameter();
+		for (int i = 0; i < all.size(); i++) {
+			if (all.get(i).getName() == null || all.get(i).getName().isBlank()) {
+				throw new InvalidRequestException("Parameters.parameter[" + i
+						+ "] has no name, so nothing here could tell what it is; every parameter"
+						+ " must carry the name its profile defines");
+			}
+		}
 	}
 }

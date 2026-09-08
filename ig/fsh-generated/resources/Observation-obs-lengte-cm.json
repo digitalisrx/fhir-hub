@@ -1,0 +1,25 @@
+{
+  "resourceType": "Observation",
+  "id": "obs-lengte-cm",
+  "meta": {
+    "profile": [
+      "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation"
+    ]
+  },
+  "valueQuantity": {
+    "system": "http://unitsofmeasure.org",
+    "value": 178,
+    "unit": "cm",
+    "code": "cm"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "8302-2"
+      }
+    ]
+  },
+  "effectiveDateTime": "2026-09-08"
+}

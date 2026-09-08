@@ -59,6 +59,40 @@ Usage: #inline
 * valueQuantity.system = "http://unitsofmeasure.org"
 * valueQuantity.code = #"mL/min/{1.73_m2}"
 
+// Lengte is the one determination with two accepted units, so it gets one example each. Both
+// state the same height: `m` is an exact conversion, so 1.78 m is forwarded as the 178 cm the
+// G-Standaard dose model works in. Send one of the two, not both — dose checking reads the first
+// 8302-2 in the request whatever its date.
+Instance: ExampleLengthInCentimetres
+InstanceOf: FhirHubLabObservation
+Usage: #example
+Title: "Lengte in centimeters"
+Description: "A body height of 178 cm, LOINC 8302-2, in the unit the G-Standaard dose model works in."
+* id = "obs-lengte-cm"
+* status = #final
+* code.coding[0].system = "http://loinc.org"
+* code.coding[0].code = #8302-2
+* effectiveDateTime = "2026-09-08"
+* valueQuantity.value = 178
+* valueQuantity.unit = "cm"
+* valueQuantity.system = "http://unitsofmeasure.org"
+* valueQuantity.code = #cm
+
+Instance: ExampleLengthInMetres
+InstanceOf: FhirHubLabObservation
+Usage: #example
+Title: "Lengte in meters"
+Description: "The same height as 1.78 m, LOINC 8302-2. Metres are converted exactly, so the dose model reads 178 cm either way."
+* id = "obs-lengte-m"
+* status = #final
+* code.coding[0].system = "http://loinc.org"
+* code.coding[0].code = #8302-2
+* effectiveDateTime = "2026-09-08"
+* valueQuantity.value = 1.78
+* valueQuantity.unit = "m"
+* valueQuantity.system = "http://unitsofmeasure.org"
+* valueQuantity.code = #m
+
 Instance: ExampleFormularySessionInput
 InstanceOf: FhirHubFormularySessionInput
 Usage: #example

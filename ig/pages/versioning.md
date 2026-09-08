@@ -1,15 +1,12 @@
-How this guide will change once it is published, and what you will be able to build on. Agree the
-parts that affect your release process with Digitalis before you go live.
+How this guide will change once it is published, and what you can build on.
 
 **None of it is in force yet.** Nothing is published at the canonical, no integrator is in
-production, and until the first release goes out **every part of this specification may change
-without notice** — including the things listed under *What is not covered* below as the only ones
-that can move in a patch. The grades and promises on this page take effect with that first
-release.
+production, and until the first release **every part of this specification may change without
+notice** — including what *What is not covered* lists as the only things that can move in a patch.
 
 ### Where a version shows up
 
-One number versions the whole guide. It is stamped on every artifact, so the version in a validator
+One number versions the whole guide, stamped on every artifact — so the version in a validator
 message is the version of the guide that produced the profile:
 
 ```
@@ -18,16 +15,13 @@ None of the codings provided are in the value set 'ICPC-1 NL'
 ```
 
 The running service carries no version in a request or a response: none in the path, none in the
-payload, none in a header. A deployment implements one release of this guide, and the way to ask
-which is `GET /fhir/evs/metadata` — the `CapabilityStatement` reports it as `software.version`, and
-`implementation.description` names it alongside the canonical. That call is unauthenticated, so you
-can check it before you hold credentials.
+payload, none in a header. A deployment implements one release, and you ask which with
+`GET /fhir/evs/metadata` — `software.version`, unauthenticated, so you can check it before you hold
+credentials.
 
-**One number covers both FHIR bases.** `/fhir/evs` and `/fhir/surveillance` are separate contracts
-with separate CapabilityStatements, and they report the same release. So a release that only moves
-the surveillance contract still moves the number an EVS integrator reads, and the other way round.
-Which contract a change belongs to is named in the [Changelog](changelog.html); the version number
-cannot carry that news and does not try to.
+**One number covers both FHIR bases**, so a surveillance-only release still moves the number an EVS
+integrator reads, and the other way round. Which contract a change belongs to is named in the
+[Changelog](changelog.html); the version number cannot carry that news.
 
 ### Two addresses per artifact
 
@@ -44,14 +38,12 @@ at a versioned path, permanently:
 http://spec.digitalis.nl/fhir/0.4.0/StructureDefinition/fhirhub-FormularySessionInput
 ```
 
-Point a validator at the versioned path when you want a build that cannot change under you, and at
-the unversioned one when you want to find out early that it has. Both serve the same bytes for the
-same release, and a release is never edited in place, so a versioned URL is safe to cache forever
-and the current one is not.
+Point a validator at the versioned path for a build that cannot change under you, at the
+unversioned one to find out early that it has. A release is never edited in place, so a versioned
+URL is safe to cache forever and the current one is not.
 
 Neither address changes what the running service accepts. Validating against an older release than
-the service implements will not fail — it will pass on the old rules, which is exactly the kind of
-green run that verifies nothing. Track the version in `metadata`.
+the service implements passes on the old rules — a green run that verifies nothing.
 
 ### What a version bump means
 
@@ -63,35 +55,30 @@ green run that verifies nothing. Track the version in `metadata`.
 | **Minor** | Additive. Every request that was accepted before is still accepted, and every response you could already parse still parses | A new optional parameter; a new optional element; a widened `max`; a new code in a Digitalis-minted `CodeSystem`; a new accepted lab determination |
 | **Major** | A payload that used to be accepted may now be rejected, or a response may carry something your parser has to be taught | A new required element; a narrowed binding; a removed or renamed parameter; a tightened cardinality; a changed canonical |
 
-A patch can still change the bytes of a `StructureDefinition`: an element's `description` and
-`comment` live inside the profile, so correcting wording alters the artifact without altering a
-rule. The version promises behaviour, not checksums — if you need bytes that cannot move, pin the
-versioned path.
+A patch can still change the bytes of a `StructureDefinition`, because `description` and `comment`
+live inside the profile. The version promises behaviour, not checksums — pin the versioned path if
+you need bytes that cannot move.
 
-**The base URL is outside this table.** The grades above are about payloads, and moving the
-endpoints breaks every caller without altering one. Nothing in a profile records the base URL, so a
-validator cannot warn you and the version number cannot carry the news. A move like that is
-announced in the [Changelog](changelog.html) under its own **Breaking** heading and agreed with you
-before it goes out. Note that a base URL and a canonical are different things: the canonicals in
-your payloads are identifiers rather than addresses, and they do not move when the service does.
+**The base URL is outside this table.** Moving the endpoints breaks every caller without altering a
+payload, and no profile records the base URL, so a move is announced in the
+[Changelog](changelog.html) under its own **Breaking** heading and agreed with you first. The
+canonicals in your payloads are identifiers, not addresses, and do not move when the service does.
 
 Two consequences worth stating outright:
 
 **A minor release can still break you if you validate strictly outbound.** New optional elements in
-a response are a minor change, and a client that rejects unknown elements will fail on one. Ignore
-what you do not recognise — that is the FHIR rule and it is the rule here.
+a response are a minor change, and a client that rejects unknown elements fails on one. Ignore what
+you do not recognise.
 
 **A new parameter name is additive for the service and not for you.** Inbound parameter slicing is
-closed, so a name the deployment you are talking to does not know is a 400 rather than an ignored
-element (see [Conventions](conventions.html)). Do not start sending a parameter introduced in a
-minor release until the deployment you call has moved to it, and read the version out of `metadata`
-rather than assuming.
+closed, so a name the deployment does not know is a 400 rather than an ignored element (see
+[Conventions](conventions.html)). Do not send a parameter from a later release until the deployment
+you call reports it in `metadata`.
 
 ### While the status is `draft`
 
 `draft` is not a formality: **a breaking change can arrive at a minor version** until the first
-`active` release, and before the first *published* release it can arrive without notice at all.
-The three that are most likely once things settle:
+`active` release, and without notice at all before the first published one. The three most likely:
 
 - a decision about `meta.profile`, which nothing asserts today — see
   [Current limitations](limitations.html)
@@ -100,13 +87,13 @@ The three that are most likely once things settle:
 - nl-core parentage, if the Nictiz artifacts this interface would need stop being pre-release
 
 The version becomes `1.0.0` and the status `active` when the first integrator goes to production.
-From that point the table above is a promise: breaking changes only at a major.
+From then the table above is a promise: breaking changes only at a major.
 
 ### Deprecation
 
 Nothing is removed without warning. An element or code on its way out is marked deprecated for at
-least one minor release, with what to use instead, and is removed at the next major at the
-earliest. A deprecated element keeps working for as long as it is present.
+least one minor release, with what to use instead, and removed at the next major at the earliest.
+It keeps working while it is present.
 
 ### What is *not* covered by any of this
 
@@ -121,7 +108,6 @@ These can change in a patch release, so do not build on them:
 
 ### How you find out
 
-Every release is listed on the [Changelog](changelog.html) with the version, the date and what
-moved, and the versioned snapshot of the release it replaces stays online. Ask Digitalis to be told
-directly — with a dozen HIS suppliers and several XIS systems, a changelog nobody is pointed at is
-not an announcement.
+Every release is listed on the [Changelog](changelog.html) with its version, date and changes, and
+the versioned snapshot of the release it replaces stays online. Ask Digitalis to be told directly:
+a changelog nobody is pointed at is not an announcement.

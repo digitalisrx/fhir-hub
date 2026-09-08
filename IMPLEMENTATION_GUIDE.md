@@ -1,50 +1,42 @@
 # fhir-hub Implementation Guide
 
-One FHIR R4 interface in front of two Digitalis applications, on two FHIR bases. Which one you
-are integrating with decides most of what you need from this document.
+FHIR R4 interface for the Digitalis Prescriptor and Surveillance applications.
 
 | | | |
 | --- | --- | --- |
-| **[Prescriptor](#prescriptor)** | `/fhir/evs` | Prescribing, in Prescriptor's own user interface. Your system opens a session, hands the browser over and collects the result |
-| **[Surveillance](#surveillance)** | `/fhir/surveillance` | Medication surveillance on its own. No interface and no session: your system asks, and reads the signals in the response |
+| **[Prescriptor](#prescriptor)** | `/fhir/evs` | Prescribing in Prescriptor's own interface: open a session, hand the browser over, collect the result |
+| **[Surveillance](#surveillance)** | `/fhir/surveillance` | Medication surveillance alone: no interface, no session — ask, and read the signals in the response |
 
-Read the section for your application first. [Conventions](#conventions),
-[Authentication](#authentication), [Lab determinations](#lab-determinations),
-[Profiles](#profiles), [Code systems](#code-systems), [Extensions](#extensions) and
-[Errors](#errors) are shared by both: one set of credentials, one set of payload profiles, one
-release number.
+Shared by both: [Conventions](#conventions), [Authentication](#authentication),
+[Lab determinations](#lab-determinations), [Profiles](#profiles), [Code systems](#code-systems),
+[Extensions](#extensions), [Errors](#errors). One set of credentials, one set of payload profiles,
+one release number.
 
-> **This guide is work in progress.** Nothing is published at the canonical yet, no integrator is
-> in production, and **every part of this specification may change without notice** — the payloads,
-> the profiles, the operation names and the base paths included. Build against it, and agree with
-> Digitalis how you want to be told about a change before you go live. The change policy takes
-> effect with the first published release.
+> **Work in progress.** Nothing is published at the canonical yet, and **every part of this
+> specification may change without notice** — payloads, profiles, operation names, base paths.
+> The change policy takes effect with the first published release.
 
-- **FHIR R4 (4.0.1).** Every payload is a `Parameters` or a `Bundle`; there is no resource REST API
-  and no search.
+- **FHIR R4 (4.0.1).** Every payload is a `Parameters` or a `Bundle`. No resource REST API, no
+  search.
 - **Stateless.** Persist the session id and the result Bundle yourself; nothing can be re-fetched.
-- **The prose and the `StructureDefinition`s are one specification**, published at
-  `http://spec.digitalis.nl/fhir`. Every request is validated against its profile before it is
-  processed — see [Profiles](#profiles).
+- **The prose and the `StructureDefinition`s are one specification**, at
+  `http://spec.digitalis.nl/fhir`. Every request is validated against its profile — see
+  [Profiles](#profiles).
 
 ## Conventions
 
 | | |
 | --- | --- |
-| Base paths | `/fhir/evs` for [Prescriptor](#prescriptor), `/fhir/surveillance` for [Surveillance](#surveillance) — two FHIR bases, each with its own `metadata`. They are siblings rather than nested because FHIR reserves the path space under a base for resource type names |
-| Request content type | `application/fhir+json` (`application/fhir+xml` also accepted) |
-| Response content type | `application/fhir+json`, pretty-printed |
+| Base paths | `/fhir/evs` and `/fhir/surveillance` — two FHIR bases, each with its own `metadata`. Siblings rather than nested, because FHIR reserves the path space under a base for resource type names |
+| Request | `application/fhir+json`, or `application/fhir+xml` |
+| Response | `application/fhir+json`, pretty-printed |
 | Format override | `?_format=json`, `?_format=xml`, `?_format=html` |
-| Browser rendering | A request whose highest-ranked `Accept` is `text/html` gets a syntax-highlighted HTML page instead of raw JSON |
+| Browser rendering | A highest-ranked `Accept: text/html` gets a syntax-highlighted page, so set `Accept: application/fhir+json` in machine clients |
 | Errors | Always `OperationOutcome` — no endpoint returns a non-FHIR body |
 
-Set `Accept: application/fhir+json` explicitly in machine clients; a browser-style `Accept` gets
-HTML.
-
-**An undefined parameter name is a 400, and so is a repeat of a single-valued one.** The request
-profiles close the list of names and carry each cardinality, so `medicationstatement` for
-`medicationStatement` is rejected rather than silently dropped. Both are caught before anything is
-sent upstream — see [Profiles](#profiles).
+**A parameter that is undefined, unnamed, or a repeat of a single-valued one is a 400.** The
+request profiles close the list of names, so `medicationstatement` for `medicationStatement` is
+rejected rather than silently dropped.
 
 ## Authentication
 
@@ -52,44 +44,40 @@ sent upstream — see [Profiles](#profiles).
 Authorization: Basic base64(organization.id ":" organization.key)
 ```
 
-Invalid credentials are a **401** on the operation you called; there is no token to obtain and
-nothing to refresh. `GET /fhir/evs/metadata`, `GET /fhir/evs/OperationDefinition/**` and
-`GET /actuator/health/**` are unauthenticated, so you can read what the interface accepts before
-your credentials are issued. Anything else without the header is a 401 with
-`WWW-Authenticate: Basic`.
+- Invalid credentials: **401** on the operation you called. No token to obtain, none to refresh.
+- Unauthenticated: `GET /fhir/evs/metadata`, `GET /fhir/evs/OperationDefinition/**` and
+  `GET /actuator/health/**` — readable before your credentials are issued.
+- Anything else without the header: 401 with `WWW-Authenticate: Basic`.
 
 ## Prescriptor
 
 **Digitalis Prescriptor 3** is the prescribing application: the care provider chooses a treatment,
-writes the prescription and reads the signals in Prescriptor's own user interface. Your system
-supplies the patient context, hands the browser over and collects what came out.
+writes the prescription and reads the signals in its own interface. Your system supplies the
+patient context, hands the browser over and collects the result.
 
 ```
 Base            /fhir/evs
 Interaction     session-based — open, redirect the browser, poll for the result
 ```
 
-`evs` is *elektronisch voorschrijfsysteem*; the segment is part of the base and never omitted.
+`evs` is *elektronisch voorschrijfsysteem*; part of the base, never omitted.
 
 | Operation | |
 | --- | --- |
 | [`POST /fhir/evs/$formulary-session`](#post-fhirevsformulary-session) | Open a formulary session: a treatment is chosen for a stated reason for encounter |
-| [`POST /fhir/evs/$createrx-session`](#post-fhirevscreaterx-session) | Open a prescribing session without a formulary lookup, optionally starting from a prescription you already hold |
+| [`POST /fhir/evs/$createrx-session`](#post-fhirevscreaterx-session) | Open a prescribing session without a formulary lookup, optionally from a prescription you hold |
 | [`GET /fhir/evs/$session-result`](#get-fhirevssession-result) | Collect the prescriptions and patient advice. Single-use: it ends the session |
 | [`GET /fhir/evs/metadata`](#get-fhirevsmetadata) | The CapabilityStatement. Unauthenticated |
 
-**Medication surveillance happens inside the session**, on the medication list you send, which is
-why that list matters as much as the prescription. The signals are shown to the care provider in
-Prescriptor's interface and are not returned to your system; for the signals themselves, see
-[Surveillance](#surveillance).
-
-**No resource REST API and no search.** `/fhir/evs/Patient`, `/fhir/evs/MedicationRequest` and the
-like are not supported, and nothing is stored here to read back.
+- **Surveillance runs inside the session**, on the medication list you send. Its signals go to the
+  care provider in Prescriptor, not back to your system — for those, see
+  [Surveillance](#surveillance).
+- **No resource REST API and no search.** `/fhir/evs/Patient` and the like are unsupported; nothing
+  is stored here to read back.
 
 ## The Prescriptor flow
 
-Three calls, plus a browser round trip your system does not mediate. None of it applies to
-[Surveillance](#surveillance), which has one request and one answer.
+Three calls, plus a browser round trip your system does not mediate.
 
 ```
 Host (XIS/HIS)                fhir-hub                 Prescriptor        G-Standaard
@@ -110,40 +98,34 @@ Host (XIS/HIS)                fhir-hub                 Prescriptor        G-Stan
      |<- Bundle -------------------|<- drugs + advice -------|                  |
 ```
 
-1. **Open a session.** Post the patient context and receive a `sessionId` and a `url`. Current
-   medication is resolved against the G-Standaard *before* the session opens, because surveillance
-   needs PRK and GPK together — which is why an unresolvable drug code fails the whole call.
-2. **The care provider works in the Prescriptor UI** at that `url`; fhir-hub is not involved. When
-   finished, Prescriptor redirects the browser to your `endSessionUrl`.
-3. **Fetch the result** with the `sessionId` and receive a `Bundle` of `MedicationRequest`
-   (prescriptions) and `Communication` (patient advice).
+1. **Open a session.** Post the patient context; receive `sessionId` and `url`. An unresolvable
+   medication code fails the call: surveillance needs PRK and GPK together.
+2. **The care provider works in Prescriptor** at that `url`; fhir-hub is not involved. Prescriptor
+   then redirects the browser to your `endSessionUrl`.
+3. **Fetch the result** with the `sessionId`: a `Bundle` of `MedicationRequest` (prescriptions) and
+   `Communication` (patient advice).
 
-**The ordering is not advisory.** A session id is valid only between step 1 and step 3, and step 3
-consumes it — a second `$session-result` for the same id is a 401. Persist the id when you receive
-it and the Bundle when you fetch it.
+**The order is mandatory.** Step 3 consumes the id, so a second `$session-result` is a 401. Persist
+the id and the Bundle as they arrive.
 
 ## `GET /fhir/evs/metadata`
 
-The FHIR CapabilityStatement, unauthenticated. **Input** — none. **Output** — a
-`CapabilityStatement` listing `formulary-session`, `createrx-session` and `session-result`.
+Unauthenticated. **Input** — none. **Output** — a `CapabilityStatement` listing
+`formulary-session`, `createrx-session` and `session-result`.
 
 ```bash
 curl -sS 'http://localhost:8080/fhir/evs/metadata?_format=json'
 ```
 
-**`software.version` is the release of this specification the deployment implements** — not a build
-number of the service, and not the FHIR version, which is `fhirVersion`. Read it before you send
-anything introduced in a later release: a parameter name the deployment does not know is a 400
-rather than an ignored element.
-
-Each operation links a generated `OperationDefinition` —
-`/fhir/evs/OperationDefinition/-s-formulary-session` and its two siblings, also unauthenticated —
-describing every input parameter with a `type` and a cardinality, so a request can be generated
-from it. The `OperationDefinition`s give you the parameter list; the [profiles](#profiles) give you
-what has to be true *inside* each parameter.
-
-**This statement covers the Prescriptor base only.** [Surveillance](#surveillance) has its own at
-`GET /fhir/surveillance/metadata`; both report the same `software.version`.
+- **`software.version` is the specification release this deployment implements** — not a build
+  number, and not the FHIR version, which is `fhirVersion`. Read it before sending anything
+  introduced in a later release: an unknown parameter name is a 400, not an ignored element.
+- Each operation links a generated `OperationDefinition`
+  (`/fhir/evs/OperationDefinition/-s-formulary-session` and two siblings, also unauthenticated)
+  with a `type` and a cardinality per parameter. The [profiles](#profiles) add what must hold
+  *inside* each parameter.
+- **Prescriptor base only.** [Surveillance](#surveillance) has its own, reporting the same
+  `software.version`.
 
 ## `POST /fhir/evs/$formulary-session`
 
@@ -152,8 +134,7 @@ encounter.
 
 ### Input
 
-A `Parameters` resource. The cardinalities below are enforced; anything outside them is a 400 that
-names the element.
+A `Parameters` resource. Anything outside these cardinalities is a 400 naming the element.
 
 | Parameter | Card. | Type | Notes |
 | --- | --- | --- | --- |
@@ -168,31 +149,21 @@ names the element.
 | `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
 | `prescription` | 0..0 | — | Rejected here with a 400; `$createrx-session` only |
 
-**`patient`** — `gender` must be `male`, `female` or `unknown`; `other` and an absent `gender` are
-both a 400, so send `unknown` where your record holds `other`. Send the sex when you know it:
-sex-specific surveillance checks cannot fire on `unknown`, and the prescriber is not told they were
-skipped. `birthDate` is required. Nothing else in the `Patient` is read, forwarded or stored.
-
-**`reason`** — a `CodeableConcept`; a bare `valueCoding` is rejected. `system` must be the ICPC-1 NL
-OID `urn:oid:2.16.840.1.113883.2.4.4.31.1` and the code must match `^[A-Z][0-9]{2}(\.[0-9]{2})?$`
-(`A01`, `U71.01`).
-
-**`endSessionUrl`** — `valueUrl` only, and `http` or `https` only. A custom scheme such as an app
-deep link is a 400: use an `https` landing page and redirect on from there.
-
-**`xisId` and `xisVersion`** — your product and release, not the practice. Keep the id stable and
-move only the version. They trace your calls in this service's logs and are **never forwarded to
-Prescriptor**.
-
-**`medicationStatement`** — every code is looked up in the G-Standaard, and one that cannot be
-resolved **fails the whole request with a 400** naming it. Nothing is skipped and no session is
-opened, and there is no free-text fallback, so refresh your codes against a current G-Standaard
-first. Each entry carries its own level: PRK for one drug and HPK for the next is fine, in any
-order, because every entry is resolved to a PRK + GPK pair before the session opens.
-
-**`observation`** — a lab determination or body measurement in **LOINC** (`http://loinc.org`), with
-`effectiveDateTime` and a `valueQuantity` in the unit listed under
-[Lab determinations](#lab-determinations). Only the determinations surveillance reads are accepted.
+- **`patient`** — `other` or absent `gender` is a 400; send `unknown` instead. Send the real sex
+  when you have it: sex-specific checks cannot fire on `unknown`, and nobody is told they were
+  skipped. Nothing else in the `Patient` is read.
+- **`reason`** — a `CodeableConcept`, not a bare `valueCoding`. `system`
+  `urn:oid:2.16.840.1.113883.2.4.4.31.1`, code matching `^[A-Z][0-9]{2}(\.[0-9]{2})?$` (`A01`,
+  `U71.01`).
+- **`endSessionUrl`** — `valueUrl`, `http` or `https` only. An app deep link is a 400: use an
+  `https` landing page and redirect on.
+- **`xisId` / `xisVersion`** — your product and release, not the practice. Logged here and **never
+  forwarded to Prescriptor**.
+- **`medicationStatement`** — every code is resolved against the G-Standaard, and one that cannot be
+  **fails the whole request with a 400** naming it: nothing is skipped and there is no free-text
+  fallback. Levels may be mixed per entry, each expanded to a PRK + GPK pair.
+- **`observation`** — a **LOINC** determination (`http://loinc.org`) with `effectiveDateTime` and a
+  `valueQuantity` in the unit under [Lab determinations](#lab-determinations).
 
 ```jsonc
 POST /fhir/evs/$formulary-session
@@ -249,9 +220,8 @@ Authorization: Basic ...
 }
 ```
 
-`status` and `subject` are not read and are nonetheless **required**: base R4 makes them mandatory
-and a profile can only constrain. Send them as the example does, with a `data-absent-reason` where
-you have nothing to point at — see
+`status` and `subject` are **required** and not read. Send a `data-absent-reason` as the example
+does — see
 [Elements FHIR requires that fhir-hub does not read](#elements-fhir-requires-that-fhir-hub-does-not-read).
 
 ### Output
@@ -273,13 +243,13 @@ you have nothing to point at — see
 }
 ```
 
-Treat `url` as opaque and redirect to it unchanged: its shape is Prescriptor's and is not part of
-this contract, so read the session id from `sessionId` rather than parsing it back out.
+Treat `url` as opaque: its shape is Prescriptor's, not part of this contract. Read the session id
+from `sessionId`.
 
 ## `POST /fhir/evs/$createrx-session`
 
-Opens a **CreateRx** session: prescribing without a formulary lookup, optionally starting from a
-prescription you already hold. Identical to `$formulary-session` except:
+Prescribing without a formulary lookup, optionally starting from a prescription you already hold.
+Identical to `$formulary-session` except:
 
 | | |
 | --- | --- |
@@ -288,10 +258,9 @@ prescription you already hold. Identical to `$formulary-session` except:
 
 ### `prescription`
 
-Send back the `MedicationRequest` you received from `$session-result`, with your edits. The shapes
-are the same with one exception: the product must be coded as **PRK or HPK**, and `$session-result`
-may have returned it at GPK level. Resolve that to a PRK or an HPK first, or open the session
-without a prescription.
+Send back the `MedicationRequest` from `$session-result`, with your edits. One difference: the
+product must be **PRK or HPK**, and `$session-result` may have returned GPK — resolve it first, or
+open the session without a prescription.
 
 | Element | Card. | Notes |
 | --- | --- | --- |
@@ -304,9 +273,8 @@ without a prescription.
 | `dosageInstruction.text` | 0..1 | Fallback when the extension is absent |
 | `dispenseRequest.quantity` | 0..1 | `value` plus `code` (or `unit`) as the G-Standaard basiseenheid |
 
-Dosing is read from the `CodedDirections` extension, and from `Dosage.text` only as a fallback.
-Edits to `timing` or `doseAndRate` are **ignored**: NHG Tabel 25 passes through verbatim in both
-directions and no structured dosing is derived. See [Extensions](#extensions).
+Dosing comes from the `CodedDirections` extension, `Dosage.text` as fallback. Edits to `timing` or
+`doseAndRate` are **ignored** — see [Extensions](#extensions).
 
 ```jsonc
 { "name": "prescription", "resource": {
@@ -327,8 +295,8 @@ directions and no structured dosing is derived. See [Extensions](#extensions).
       "system": "urn:oid:2.16.840.1.113883.2.4.4.1.900.2" } } } }
 ```
 
-Sending `prescription` to `$formulary-session` is a 400. Output is the same
-`Parameters{sessionId, url}` as above.
+`prescription` sent to `$formulary-session` is a 400. Output is the same
+`Parameters{sessionId, url}`.
 
 ## `GET /fhir/evs/$session-result`
 
@@ -348,21 +316,18 @@ curl -sS \
   'http://localhost:8080/fhir/evs/$session-result?session=sess-abc-123'
 ```
 
-Quote the URL: unquoted, the shell expands `$session-result` and you request `/fhir/-result`.
-
-**One shot.** The first successful call *ends the session*; a second with the same id returns 401,
-not the same Bundle. Store the Bundle as soon as you receive it, and make sure a retry after a
-timeout cannot fire twice — a lost response cannot be recovered.
-
-**Call it once, when the browser returns to your `endSessionUrl`**; that redirect is the signal
-that the session is finished. Do not poll on a timer: a 401 does not distinguish "unknown id" from
-"already collected".
+- Quote the URL: unquoted, the shell expands `$session-result` and you request `/fhir/-result`.
+- **One shot.** The first successful call ends the session; a second is a 401, not the same Bundle.
+  Store the Bundle on arrival, and make sure a retry after a timeout cannot fire twice: a lost
+  response is unrecoverable.
+- **Call it once, when the browser returns to your `endSessionUrl`** — that redirect is the signal.
+  Do not poll: a 401 does not distinguish "unknown id" from "already collected".
 
 ### Output
 
 `200` with a `Bundle`, `type: collection`: one `MedicationRequest` per prescribed drug, then one
-`Communication` per piece of patient advice. Either list may be empty — a session that produced
-neither yields an empty Bundle, not an error. An unknown or already-consumed session id is a 401.
+`Communication` per piece of patient advice. Either list may be empty, and a session that produced
+neither yields an empty Bundle rather than an error. An unknown or consumed session id is a 401.
 
 #### `MedicationRequest`
 
@@ -378,14 +343,10 @@ neither yields an empty Bundle, not an error. An unknown or already-consumed ses
 | `dispenseRequest.expectedSupplyDuration` | 0..1 | Days: `unit: "dag"`, `system: UCUM`, `code: "d"` |
 | `extension[OpiumActClassification]` | 0..1 | Present only when the product falls under the Opiumwet |
 
-`subject` never carries a reference — no `Patient` is stored here. Correlate the Bundle with your
-own record using the session id you polled with.
-
-Parse `quantity` as a **decimal**: partial packs are real.
-
-Each prescription comes back at exactly one code level, whichever Prescriptor prescribed at, so
-match on whichever coding is present rather than looking for PRK. That is the reverse of the input
-side, where a PRK or HPK you send is expanded to a PRK + GPK (+ HPK) triple.
+- `subject` never carries a reference: correlate on the session id you polled with.
+- Parse `quantity` as a **decimal**: partial packs are real.
+- **One code level per prescription**, whichever Prescriptor prescribed at, so match on whichever
+  coding is present rather than looking for PRK.
 
 #### `Communication`
 
@@ -396,8 +357,8 @@ side, where a PRK or HPK you send is expanded to a PRK + GPK (+ HPK) triple.
 | `payload.contentString` | 0..1 | Prose advice |
 | `payload.contentAttachment` | 0..1 | A link (thuisarts.nl): `contentType: text/uri-list`, `url` set |
 
-Exactly one of the two is present per `Communication` — the attachment form when the advice is a
-link, the string form for prose. Switch on which element is populated rather than on the text.
+Exactly one of the two per `Communication` — attachment for a link, string for prose. Switch on
+which is populated, not on the text.
 
 ```jsonc
 {
@@ -456,8 +417,7 @@ link, the string form for prose. Switch on which element is populated rather tha
 
 ## Surveillance
 
-**Surveillance** answers the medication-surveillance question on its own: no user interface, no
-session, no browser round trip. Your system asks, and reads the signals in the response.
+Medication surveillance on its own: no interface, no session, no browser round trip.
 
 ```
 Base            /fhir/surveillance
@@ -471,20 +431,15 @@ Answers         a Bundle of DetectedIssue, one entry per signal
 | [`POST /fhir/surveillance/$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement) | Weigh a patient's current medication against itself and their context |
 | `GET /fhir/surveillance/metadata` | The CapabilityStatement of this base. Unauthenticated |
 
-**What is behind it** is both halves of Dutch medication surveillance, in one call: the
-G-Standaard's **medisch-farmaceutische beslisregels** — interactions, contra-indications,
-nierfunctie and the rest — and the **classic G-Standaard checks** for allergy, age as a
-contra-indication, duplicate medication and dose control. One report comes back with both merged
-into it. Nothing is prescribed, stored or dispensed here: it weighs what you propose and answers.
+**Behind it, in one call:** both halves of Dutch medication surveillance, merged into one report —
+the G-Standaard's **medisch-farmaceutische beslisregels** (interactions, contra-indications,
+nierfunctie) and the **classic checks** (allergy, age, duplicate medication, dose control). Nothing
+is prescribed, stored or dispensed here.
 
-> **Both the request and the response have a published profile**, so you can validate what you
-> send and what you receive rather than read prose about either. The response profile has been
-> measured against a handful of real reports rather than a year of them, and the severity mapping
-> and the way a rule's text arrives are the parts most likely to move — as may anything else in
-> this guide, which is still work in progress. Two things the answer does not cover yet are under
+> **Request and response both have a published profile**, so you can validate rather than read
+> prose. The response profile is the young half of this contract: the severity mapping and the way
+> a rule's text arrives are the likeliest things to move. Two gaps:
 > [What the answer does not cover yet](#what-the-answer-does-not-cover-yet).
-
-**How it differs from Prescriptor:**
 
 | | Prescriptor | Surveillance |
 | --- | --- | --- |
@@ -495,37 +450,33 @@ into it. Nothing is prescribed, stored or dispensed here: it weighs what you pro
 
 ### Two bases, and what follows from it
 
-`/fhir/surveillance` is a **separate FHIR base**, not a path inside `/fhir/evs`: FHIR reserves the
-path space under a base for resource type names, so
+FHIR reserves the path space under a base for resource type names, so
 `/fhir/evs/surveillance/$check-medication-request` would parse as an operation on a resource type
-called `surveillance`. Four consequences:
+called `surveillance`. Hence a separate base, with four consequences:
 
-- **Its own CapabilityStatement**, at `GET /fhir/surveillance/metadata`, unauthenticated like
-  [Prescriptor's](#get-fhirevsmetadata) and listing this base's two operations.
+- **Its own CapabilityStatement** at `GET /fhir/surveillance/metadata`, unauthenticated, listing
+  this base's two operations.
 - **The same credentials** and the same 401s — see [Authentication](#authentication).
-- **One version number for both contracts**, because there is one guide and the version is stamped
-  on every artifact in it. A release that only touches surveillance still moves the number
-  `GET /fhir/evs/metadata` reports; which contract a change belongs to is named in the changelog.
-- **A path in neither base is a 404**, from the container rather than a FHIR `OperationOutcome`.
+- **One version number for both contracts.** A surveillance-only release still moves the number
+  `GET /fhir/evs/metadata` reports; the changelog names the contract each change belongs to.
+- **A path in neither base is a 404** from the container, not a FHIR `OperationOutcome`.
 
-Everything else is shared: the content types and error shape, the profiles for patient, current
-medication, allergies, contra-indications and lab results, the [Code systems](#code-systems) and
-the [Lab determinations](#lab-determinations). A system that already opens Prescriptor sessions has
-no new payload to learn, only a new address to post to.
+Everything else is shared — content types, error shape, the resource profiles,
+[Code systems](#code-systems), [Lab determinations](#lab-determinations) — so a system that already
+opens sessions has a new address to post to and no new payload to learn.
 
 ## `POST /fhir/surveillance/$check-medication-request`
 
 Given a patient's context and one or more proposed prescriptions: which signals fire?
 
-> **An empty `Bundle` means the check ran and no rule fired.** Nothing else can produce one: every
-> way for the check not to happen — unreachable upstream, refusal, a report that did not come back
-> — is a **500** with an `OperationOutcome`, never a 200 with no findings. A prescriber who sent a
-> medication list cannot tell an empty list of findings apart from a genuine all-clear.
+> **An empty `Bundle` means the check ran and no rule fired.** Nothing else produces one: an
+> unreachable upstream, a refusal or a report that did not come back are all a **500**, never a 200
+> with no findings, because a prescriber cannot tell the two apart.
 
 ### `$check-medication-request` input
 
-A `Parameters` resource, conforming to `fhirhub-SurveillanceInput`. Anything outside the
-cardinalities below is a 400 naming the element.
+A `Parameters` resource conforming to `fhirhub-SurveillanceInput`. Anything outside these
+cardinalities is a 400 naming the element.
 
 | Parameter | Card. | Type | Notes |
 | --- | --- | --- | --- |
@@ -538,53 +489,39 @@ cardinalities below is a 400 naming the element.
 | `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
 | `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
 
-**Every resource is one you already build.** All of them bind the same profiles as the session
-operations, and `prescription` binds the same `fhirhub-PrescriptionInput` that `$createrx-session`
-takes — so a prescription can be checked here and then handed to a session without being reshaped.
-Everything the session sections say about each of them applies unchanged, including that an
-unresolvable drug code fails the whole request rather than being skipped.
+- **Every resource is one you already build**: the same profiles as the session operations, down to
+  the 400 on an unresolvable drug code. `prescription` binds the same `fhirhub-PrescriptionInput` as
+  `$createrx-session`, so a prescription checked here can go straight to a session.
+- **At least one `prescription` is required.** A request with none — including one carrying only
+  `medicationStatement` — has nothing under test; that question is
+  [`$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement). It is
+  repeatable because a proposed regimen is weighed as a whole: two new drugs can interact.
+- **`medicationStatement` is what the prescriptions are weighed against.** An incomplete list is
+  the one error nothing downstream can detect: the answer is about the list you sent, not the
+  patient.
+- **No `endSessionUrl` and no `reason`** — either is a 400.
 
-**At least one `prescription` is required**: this operation weighs proposals against a patient's
-context, and a request carrying none has nothing under test. That includes a request carrying only
-`medicationStatement` — the dossier question has its own operation,
-[`$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement). `prescription`
-is repeatable because a proposed regimen is weighed as a whole: two new drugs can interact with
-each other and with nothing the patient already takes.
+#### What is read beyond the code
 
-**`medicationStatement` is what the prescriptions are weighed against.** Sending an incomplete list
-is the one error nothing downstream can detect: the answer is about the list you sent, not about
-the patient.
-
-**There is no `endSessionUrl` and no `reason`.** Nothing is launched, and the reason for encounter
-drives a formulary lookup rather than surveillance. Sending either is a 400.
-
-#### What is read beyond the code, and what each element buys you
-
-The code identifies the drug; these decide which rules can look at it. All are optional in the
-profile and none is optional in effect.
+The code identifies the drug; these decide which rules can look at it. All optional in the profile,
+none optional in effect.
 
 | Element | On | What it does |
 | --- | --- | --- |
-| `id` | every resource | Comes back on `DetectedIssue.implicated` for medication and in `evidence` for the rest, so you can show a signal against the row it is about instead of matching on codes. Send one |
-| `code.coding.display`, else `code.text` | `allergyIntolerance`, `condition` | Your own wording, written into the **title and the body** of the signal — "In het dossier is een allergie (PENICILLINES) geregistreerd" — so without it the prescriber reads a sentence with a gap in it. Where you send none, the code is used |
+| `id` | every resource | Comes back on `DetectedIssue.implicated` for medication and in `evidence` for the rest, so a signal can be shown against the row it is about rather than matched on codes. Send one |
+| `code.coding.display`, else `code.text` | `allergyIntolerance`, `condition` | Your own wording, written into the **title and the body** of the signal — "In het dossier is een allergie (PENICILLINES) geregistreerd" — so without it the prescriber reads a sentence with a gap in it. The code is used where you send neither |
 | `dosageInstruction` — the `CodedDirections` extension, or `text` | `prescription` | The NHG Tabel 25 instruction. Dose control cannot check a dose without it, and says so in a signal |
 | `dispenseRequest.quantity` | `prescription` | The amount to be dispensed, read by dose control alongside the instruction |
 | `reasonCode`, with an ICPC-1 NL coding | `prescription` | The indication. Dose bands are keyed on the reason as well as the product; without one the check falls back to the "alle zorg" band |
 | `dispenseRequest.validityPeriod`, else `authoredOn` | `prescription` | When the prescription starts and ends |
 | `effectivePeriod`, else `effectiveDateTime` | `medicationStatement` | When the use started and, if it has, ended |
 
-**A missing start date is read as "today", and a stated one is obeyed.** Both engines skip a drug
-whose use starts in the future, so an entry with no start is treated as in use as of now — which is
-what `status: active` already asserts. It runs the other way too: an `effectivePeriod` that
-**ended** says the patient is not taking the medication, and that entry is not weighed. Send the
-period you mean.
-
-**Send a weight for any patient whose dose depends on it, and a height with it.** Dose bands are
-selected by weight and body surface before they are compared, so a weight-dependent band with no
-weight is not a check that passes — it is a red signal saying it could not run: *"Geen
-doseringscontrole: onbekend actueel gewicht"*. Send them as ordinary `observation` parameters with
-LOINC `29463-7` (`kg`) and `8302-2` (`cm` or `m`); body surface is derived from the two upstream,
-so a height matters for any drug dosed per m².
+- **A missing start date reads as today.** Both engines skip a drug starting in the future. An
+  `effectivePeriod` that has **ended** says the patient stopped, and that entry is not weighed.
+- **Send a weight wherever the dose depends on it, and a height with it.** A weight-dependent dose
+  band with no weight is not a pass but a red signal: *"Geen doseringscontrole: onbekend actueel
+  gewicht"*. Ordinary `observation` parameters, LOINC `29463-7` (`kg`) and `8302-2` (`cm` or `m`);
+  body surface is derived from both, so the height matters for anything dosed per m².
 
 ```jsonc
 POST /fhir/surveillance/$check-medication-request
@@ -624,28 +561,25 @@ Authorization: Basic ...
 }
 ```
 
-Allergies, contra-indications and lab results are omitted above for length; they are identical to
-the session payloads. A complete request is published as
-[`$check-medication-request` example, the reference case](Parameters-ExampleSurveillanceReferenceCase.html)
-— metformine proposed for a pregnant patient with an eGFR of 35 who already takes ibuprofen and
-omeprazol. It is the FHIR form of the request Digitalis documents as `example-1-req.xml`, so the
-two can be read side by side with the signals that request produces.
+Allergies, contra-indications and lab results are omitted for length; they are identical to the
+session payloads. A complete request:
+[the reference case](Parameters-ExampleSurveillanceReferenceCase.html) — metformine proposed for a
+pregnant patient with an eGFR of 35 who already takes ibuprofen and omeprazol.
 
 ### `$check-medication-request` output
 
-A `Bundle` with `type: collection`, one `DetectedIssue` per signal, in the order the report listed
-them.
+A `Bundle` with `type: collection`, one `DetectedIssue` per signal, in report order.
 
 | Element | | |
 | --- | --- | --- |
-| `Bundle.identifier` | 0..1 | The report id (`CRID`). **Log it**: it is what Digitalis support asks for when a prescriber queries a signal, and the only handle that ties an answer to the run that produced it |
+| `Bundle.identifier` | 0..1 | The report id (`CRID`). **Log it**: Digitalis support asks for it when a prescriber queries a signal, and it is the only handle tying an answer to the run that produced it |
 | `Bundle.timestamp` | 0..1 | When the report was produced upstream |
 | `DetectedIssue.severity` | 0..1 | `high`, `moderate` or `low`, from the rule's own red, orange and green. Absent where the rule stated no level |
-| `DetectedIssue.code.text` | 1..1 | The title to show. The message's own title where it has one, the rule's otherwise. No coding — see below |
+| `DetectedIssue.code.text` | 1..1 | The title to show: the message's own where it has one, the rule's otherwise. No coding — see below |
 | `DetectedIssue.detail` | 0..1 | The rule's full text, as plain text with the paragraphs and the numbered steps on their own lines |
 | `DetectedIssue.identifier` | 0..* | The rule's own id — `MFB-0000000068-v000006` for a beslisregel, `hub-doublemedication-prkA-1090` and its siblings for the classic checks. Stable across reports; route and de-duplicate on this |
 | `DetectedIssue.evidence.code` | 0..* | What the rule read: a drug as its PRK, GPK, HPK and ATC together, a lab result as its LOINC code with `text` carrying the determination and the value, a contra-indication as its CICode |
-| `DetectedIssue.implicated` | 0..* | The medication the risk is in, as a logical reference: `identifier.value` is the `id` you sent on that resource and `type` says whether it was a `MedicationRequest` you proposed or a `MedicationStatement` the patient already takes |
+| `DetectedIssue.implicated` | 0..* | The medication the risk is in, as a logical reference: `identifier.value` is the `id` you sent on that resource, `type` says whether it was a `MedicationRequest` you proposed or a `MedicationStatement` the patient already takes |
 | `DetectedIssue.identifiedDateTime` | 0..1 | The report's timestamp, repeated per finding |
 | `DetectedIssue.status` | 1..1 | Always `final` |
 
@@ -687,43 +621,32 @@ HTTP/1.1 200 OK
 }
 ```
 
-**A green signal is a finding, not a near-miss.** `low` means a rule fired and concluded that no
-action is needed — "Dit is GEEN contra-indicatie", "Bij deze interactie is GEEN actie nodig" — and
-it answers a question the prescriber's own dossier raised. Hiding it hides that answer.
-
-**For an allergy signal, `implicated` is how you read the verdict.** Each allergy is weighed
-against each proposal and the finding comes back either way: `low` **with no `implicated`** means
-the allergy was checked and nothing matched, `high` **naming a drug** means it matched. The rule's
-text reads "…geregistreerd voor het onderstaande middel" in both cases, which is the upstream's
-wording and is only accurate in the second — so branch on `severity` and `implicated`, not on the
-sentence.
-
-**`code` carries no coding**, only text. FHIR's own `DetectedIssue` categories are a classification
-the upstream does not make, and deriving one from a rule id would be this interface guessing. Route
-on `identifier`, show `code.text`.
-
-**The response has a profile, and `meta.profile` is still not asserted.** Validate against
-`fhirhub-SurveillanceBundle` explicitly — it states the fixed `collection` type, both identifier
-systems, `code` carrying text and no coding, and `implicated` as a logical reference. Nothing this
-service emits claims a profile, so do not route on `meta.profile`; see [Profiles](#profiles).
+- **A green signal is a finding, not a near-miss.** `low` means a rule fired and concluded no
+  action is needed — "Dit is GEEN contra-indicatie". Hiding it hides the answer.
+- **For an allergy signal, `implicated` carries the verdict**: `low` with **no `implicated`** means
+  checked and nothing matched, `high` **naming a drug** means matched. The text reads
+  "…geregistreerd voor het onderstaande middel" either way, accurate only in the second — so branch
+  on `severity` and `implicated`, not on the sentence.
+- **`code` carries no coding**, only text: FHIR's `DetectedIssue` categories are a classification
+  the upstream does not make. Route on `identifier`, show `code.text`.
+- **`meta.profile` is not asserted.** Validate against `fhirhub-SurveillanceBundle` explicitly, and
+  do not route on `meta.profile`.
 
 ### What the answer does not cover yet
 
-Two gaps, and each is a rule that stays silent rather than an error you would notice — so a host
-has to decide what to tell a prescriber.
+Two gaps, each a rule that stays silent rather than an error you would notice — so decide what to
+tell a prescriber.
 
-- **Rules that compare the prescribed daily dose against the defined daily dose cannot fire.**
-  Computing a PDD means decoding the NHG Tabel 25 instruction, and this interface passes that
-  string through undecoded (see [Extensions](#extensions)). The dose *bands* are checked, which is
-  the larger half of dose control; the DDD ratio is not.
-- **A partial answer is not distinguishable from a complete one.** If the rules engine answers and
-  the classic checks fail, the report comes back with what ran, and the upstream does not say which
-  half is missing. What this interface will never do is present nothing at all as an all-clear.
+- **Rules comparing prescribed against defined daily dose cannot fire**, because computing a PDD
+  means decoding the Tabel 25 instruction, which passes through undecoded (see
+  [Extensions](#extensions)). The dose *bands* are checked — the larger half of dose control.
+- **A partial answer is indistinguishable from a complete one.** If the rules engine answers and
+  the classic checks fail, the report carries what ran and the upstream does not say which half is
+  missing. What never happens is nothing at all being presented as an all-clear.
 
-**The credentials on this base are carried upstream but not adjudicated there**, so unlike a
-session, a wrong practice id is not rejected with a 401. Reach this endpoint from your server
-rather than from a client you do not control, and talk to Digitalis about the deployment
-restrictions in front of it.
+**Credentials on this base are carried upstream but not adjudicated there**, so unlike a session, a
+wrong practice id is not a 401. Call this endpoint from your server rather than a client you do not
+control, and talk to Digitalis about the deployment restrictions in front of it.
 
 ### `$check-medication-request` errors
 
@@ -733,30 +656,27 @@ restrictions in front of it.
 | Body fails `fhirhub-SurveillanceInput`, or a G-Standaard code cannot be resolved | 400 |
 | The check could not be run — upstream unreachable, refused, or answered without a report | 500 |
 
-Every 500 says in `diagnostics` that no conclusion may be drawn about the patient's medication.
-There is no status in this contract that means "the check partly ran".
+Every 500 says in `diagnostics` that no conclusion may be drawn about the patient's medication. No
+status means "the check partly ran".
 
 ## `POST /fhir/surveillance/$check-medication-statement`
 
-The same question asked of a different subject: rather than weighing a proposal against a dossier,
-it weighs **a dossier against itself**. Every `medicationStatement` you send is examined — for
-allergy, for age, for dose, and against every other entry for duplicate medication — and the answer
-comes back in the same shape as
+The same question about a different subject: a **dossier weighed against itself**. Every
+`medicationStatement` is examined — for allergy, age and dose, and against every other entry for
+duplicate medication — and the answer has the same shape as
 [`$check-medication-request`](#post-fhirsurveillancecheck-medication-request).
 
-> **This is not `$check-medication-request` with the prescription left out.** It takes no
-> `prescription` at all, and one sent here is a **400** rather than an element quietly dropped: a
-> request whose proposed drug was ignored would be answered for the patient's existing medication
-> alone — a real answer to a question you did not ask.
+> **Not `$check-medication-request` with the prescription left out.** A `prescription` sent here is
+> a **400** rather than an element quietly dropped: a request whose proposed drug was ignored would
+> be answered for the existing medication alone — a real answer to a question you did not ask.
 
-**What it is for.** A medication review, and anything else that asks what is wrong with what a
-patient is already taking. The signals only this operation can surface are the ones where nothing
-new is prescribed:
+**What it is for:** a medication review, or anything else asking what is wrong with what a patient
+already takes. Only this operation surfaces signals where nothing new is prescribed:
 
 - an allergy or contra-indication **recorded after** the medication was started
-- a dose that no longer fits a **nierfunctie that has since dropped**, or a weight that has changed
+- a dose that no longer fits a **nierfunctie that has since dropped**, or a changed weight
 - a **duplicate** between two drugs of which neither is new
-- an age band the patient has since **crossed** — a drug that was fine at 74 and is a signal at 75
+- an age band the patient has since **crossed** — fine at 74, a signal at 75
 
 ### `$check-medication-statement` input
 
@@ -775,17 +695,13 @@ Identical to the other operation's input except in its medication parameters.
 | `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
 | ~~`prescription`~~ | — | — | **Not accepted.** Use [`$check-medication-request`](#post-fhirsurveillancecheck-medication-request) |
 
-**`medicationStatement` means something different here**, and it is the one thing not to assume.
-In the other operation it is the *background*: the medication a proposal is weighed against. Here
-every entry is a *subject*: it is itself checked, and compared with the others.
-
-**Send the whole list.** The answer is about the list you sent, and an entry you left out is a drug
-that was neither checked nor reported as unchecked. Nothing downstream can detect the omission.
-
-**Everything else is unchanged** — the same resource profiles, the same G-Standaard code systems at
-PRK or HPK level, the same LOINC determinations and units, the same `Authorization: Basic` header,
-the same 400 on an unresolvable drug code. A host that can build a `$check-medication-request` body
-can build this one by dropping one parameter.
+- **`medicationStatement` means something different here**: the *background* in the other
+  operation, the *subject* in this one — every entry is itself checked, and compared with the
+  others.
+- **Send the whole list.** An entry you leave out is a drug neither checked nor reported as
+  unchecked, and nothing downstream can detect the omission.
+- **Everything else is unchanged**, so a `$check-medication-request` body becomes this one by
+  dropping a parameter.
 
 ```jsonc
 POST /fhir/surveillance/$check-medication-statement
@@ -833,13 +749,12 @@ A complete example is published as
 
 ### `$check-medication-statement` output
 
-**The same `Bundle` of `DetectedIssue`**, read as described under
-[`$check-medication-request` output](#check-medication-request-output). An empty `Bundle` means the
-same thing under the same guarantee: the check ran and nothing fired, or you get a 500.
+**The same `Bundle` of `DetectedIssue`** — see
+[`$check-medication-request` output](#check-medication-request-output), including the guarantee on
+an empty one: the check ran and nothing fired, or you get a 500.
 
-**One difference, and it is in `implicated`.** A signal from this operation names your
-`MedicationStatement` where the same signal from `$check-medication-request` would have named a
-`MedicationRequest`:
+**One difference, in `implicated`**: this operation names your `MedicationStatement` where the
+other would have named a `MedicationRequest`:
 
 ```jsonc
 "implicated": [ {
@@ -849,7 +764,7 @@ same thing under the same guarantee: the check ran and nothing fired, or you get
 } ]
 ```
 
-Both carry your own resource `id` as the identifier, so set one.
+Both carry your own resource `id`, so set one.
 
 **The two gaps are the same two** — see
 [What the answer does not cover yet](#what-the-answer-does-not-cover-yet).
@@ -862,14 +777,13 @@ Both carry your own resource `id` as the identifier, so set one.
 | Body fails `fhirhub-SurveillanceStatementInput` — including a `prescription` parameter, which this operation does not define — or a G-Standaard code cannot be resolved | 400 |
 | The check could not be run — upstream unreachable, refused, or answered without a report | 500 |
 
-Same shapes and the same rule: no 500 permits a conclusion about the patient's medication.
+Same shapes, same rule: no 500 permits a conclusion about the patient's medication.
 
 ## Lab determinations
 
-Lab values are coded in **LOINC** and in nothing else, and the accepted codes are a closed list.
-Both halves come from the G-Standaard: it publishes which LOINC codes count as which
-medisch-farmaceutische beslisregel parameter, and the rules engine tests the code you send. Nothing
-is translated on the way through.
+Lab values are coded in **LOINC** and nothing else, from a closed list. The G-Standaard publishes
+which LOINC code counts as which beslisregel parameter and the rules engine tests the code you
+send, so nothing is translated on the way through.
 
 | Determination | `code` (LOINC) | `valueQuantity.code` | Read by |
 | --- | --- | --- | --- |
@@ -884,56 +798,39 @@ is translated on the way through.
 | Gewicht | `29463-7` | `kg` | dose checking |
 | Lengte | `8302-2` | `cm` or `m` | dose checking |
 
-**A determination outside the list is a 400, not a silent no-op.** The rules can test twelve
-patient measurements in total, and anything else a host holds changes no decision — but a
-prescriber who supplied a lab result and saw no warning would read that as an all-clear, so the
-request is refused instead.
-
-**One eGFR code.** Dutch laboratories report CKD-EPI, so `62238-1` is the code to send. The
-G-Standaard also lists `77147-7` (MDRD) and `50210-4` (cystatin C) for the same parameter and
-neither is accepted; if your source reports one of them, raise it with Digitalis rather than
-re-labelling the value, because the formulas do not give the same number.
-
-**The unit is checked against the code.** `valueQuantity` must carry
-`system: "http://unitsofmeasure.org"` and the `code` in the table. The number is evaluated in the
-unit the rule was written in, so a kalium in mg/dL rather than mmol/L is a different answer rather
-than a rounded one, and nothing downstream could notice. An eGFR must arrive as
-`mL/min/{1.73_m2}`, not `mL/min`. Exact conversions are done for you: a length in `m` is forwarded
-in centimetres.
-
-**Leave `display` out unless it is LOINC's own term.** It is not ignored — a `display` you send
-becomes the caption Prescriptor shows the prescriber — but one that disagrees with LOINC is a hard
-validation error, because unlike the G-Standaard tables LOINC *is* distributed with the validator.
-Omitting it costs nothing: this interface supplies its own caption, `eGFR volgens CKD-EPI` for
-`62238-1`.
-
-**Dates matter as much as values.** The rules test both — *is the ClCr older than 13 months*, *is
-de INR max. 24 uur oud* — so `effectiveDateTime` is required, and it must be when the sample was
-taken rather than when the report was released. A value older than the rule's window counts as
-absent.
-
-**Only the most recent result for a determination is used.** Send two eGFRs and the rules engine
-tests the later one and ignores the earlier; it is not an average, and the older value is not
-tested separately. Two consequences:
-
-- **Same-day results need a time to be ordered.** Results stating only a date are equally recent as
-  far as the engine is concerned, and it resolves the tie by taking the one that appears **first**
-  in the request. With a time on both, the later one wins.
-- **Weight and height do not go by date at all.** Dose checking reads the **first** `29463-7` and
-  the first `8302-2` in the request whatever their dates say. Send one of each, and send the
-  current one.
-
-If you hold a history, send the determination you want weighed rather than the series: the extra
-values change no decision and cost you the certainty of knowing which one did.
-
-One determination per `observation` parameter, repeated as needed. `component` is not read — resolve
-a multi-component result to one number first. `interpretation`, `referenceRange`, `method` and
-`note` are ignored: this is an input to a decision, not a lab report.
+- **A determination outside the list is a 400, not a silent no-op**, because a prescriber who
+  supplied a lab result and saw no warning would read that as an all-clear.
+- **One eGFR code**: Dutch laboratories report CKD-EPI, so send `62238-1`. `77147-7` (MDRD) and
+  `50210-4` (cystatin C) are not accepted — raise it with Digitalis rather than re-labelling a
+  value, because the formulas do not give the same number.
+- **The unit is checked against the code** (`system: "http://unitsofmeasure.org"` plus the `code`
+  above), because the value is evaluated in the unit the rule was written in: kalium in mg/dL is a
+  different answer, not a rounded one. An eGFR must arrive as `mL/min/{1.73_m2}`, not `mL/min`.
+  Exact conversions are done for you: a length in `m` is forwarded in centimetres — the same
+  height [in centimetres](Observation-obs-lengte-cm.html) and
+  [in metres](Observation-obs-lengte-m.html).
+- **Send no `display` unless it is LOINC's own term.** Nothing here checks it: LOINC is not in this
+  service's validator, so any display passes while the `code` is still checked against the value
+  set above. It is forwarded verbatim as the caption the prescriber sees, in preference to this
+  interface's own (`eGFR volgens CKD-EPI`, `Gewicht`) — so a wrong one is displayed, not rejected.
+  A LOINC-loaded validator does reject anything but LOINC's Dutch term.
+- **Dates matter as much as values.** Rules test them — *is de ClCr ouder dan 13 maanden*, *is de
+  INR max. 24 uur oud* — so `effectiveDateTime` is required, and it is when the sample was taken,
+  not when the report was released. A value older than the rule's window counts as absent.
+- **Only the most recent result per determination is used** — not averaged, and the earlier value
+  is not tested separately. So send the one value you want weighed rather than a series, and:
+  - **Same-day results need a time.** Date-only values are equally recent to the engine, which then
+    takes the one appearing **first** in the request. With times, the later wins.
+  - **Weight and height do not go by date at all.** Dose checking reads the **first** `29463-7` and
+    the first `8302-2` whatever their dates say. Send one of each, current.
+- One determination per `observation` parameter, repeated as needed. `component` is not read —
+  resolve a multi-component result to one number first. `interpretation`, `referenceRange`, `method`
+  and `note` are ignored: this is an input to a decision, not a lab report.
 
 ## Profiles
 
-Every payload in this document has a `StructureDefinition` you can validate against, published as
-an implementation guide with the canonical `http://spec.digitalis.nl/fhir`:
+Every payload has a `StructureDefinition` to validate against, published as an implementation guide
+with the canonical `http://spec.digitalis.nl/fhir`:
 
 | Payload | Profile |
 | --- | --- |
@@ -945,27 +842,21 @@ an implementation guide with the canonical `http://spec.digitalis.nl/fhir`:
 | `$check-medication-statement` request | `fhirhub-SurveillanceStatementInput` |
 | Surveillance response (both operations) | `fhirhub-SurveillanceBundle`, whose entries are `fhirhub-SurveillanceFinding` |
 
-The input profiles slice `Parameters.parameter` by name and point each slice at a resource profile,
-so validating the request body checks the resources inside it in one pass. **The slicing is
-closed**: an undefined parameter name is an error. That is deliberate — the mapping layer reads the
-parameters it knows and ignores the rest, so `medicationstatement` for `medicationStatement` would
-otherwise open a session against a silently thinner medication list.
-
-**These profiles are enforced.** A request body is validated before anything else happens — before
-the G-Standaard lookup and before the call upstream — and a non-conformant payload is a 400 whose
-`OperationOutcome` carries one issue per error with the element it failed on, so you get every
-problem in one response rather than one per round trip.
-
-Only errors reject. Warnings are normal: the G-Standaard code systems cannot be expanded, so every
-G-Standaard coding produces a "could not be validated" note.
-
-The payloads in this document are also instances in the IG, each validated against the profile it
-claims on every build, so the documentation cannot drift away from the profiles.
+- The input profiles slice `Parameters.parameter` by name, each slice pointing at a resource
+  profile, so one pass validates the resources inside. **The slicing is closed**: an undefined name
+  is an error, because `medicationstatement` would otherwise open a session against a silently
+  thinner medication list.
+- **Enforced before anything else** — before the G-Standaard lookup and before the call upstream. A
+  non-conformant payload is a 400 with one `OperationOutcome` issue per error naming its element,
+  so you get every problem in one response.
+- Only errors reject; warnings are normal, because the G-Standaard code systems cannot be expanded.
+- The payloads here are also IG instances, validated on every build, so this document cannot drift
+  from the profiles.
 
 ### Elements FHIR requires that fhir-hub does not read
 
-Base R4 makes several elements mandatory that this interface never looks at, and a profile can only
-constrain, so a **conformant payload must carry them** even though sending them changes nothing:
+Base R4 makes several elements mandatory that this interface never reads, and a profile can only
+constrain — so a **conformant payload must carry them**:
 
 | Resource | Element | Note |
 | --- | --- | --- |
@@ -975,9 +866,8 @@ constrain, so a **conformant payload must carry them** even though sending them 
 | `Observation` | `status` | |
 | `MedicationRequest` (`prescription`) | `status`, `intent`, `subject` | `$createrx-session` and the surveillance operations |
 
-The patient travels as a sibling parameter rather than a contained resource, so there is nothing
-for `patient` and `subject` to reference: send a `data-absent-reason` of `unknown`, as the examples
-do. Validation runs before mapping, so these are required in practice and not only on paper.
+The patient travels as a sibling parameter, so `patient` and `subject` have nothing to reference:
+send a `data-absent-reason` of `unknown`, as the examples do.
 
 ## Code systems
 
@@ -1003,14 +893,13 @@ The four G-Standaard subsystems are identified by national OIDs as well:
 | OGGrp (ongewenste medicatiegroep, thesaurus 122) | `urn:oid:2.16.840.1.113883.2.4.4.1.902.122` | `allergyIntolerance` |
 | CICode (contra-indicatie, thesaurus 40) | `urn:oid:2.16.840.1.113883.2.4.4.1.902.40` | `condition` |
 
-These are the same OIDs Nictiz binds to in `nl-core-AllergyIntolerance` and
-`nl-core-MedicationContraIndication`, so a coding you send here is one you can send to any Dutch
-system that follows those profiles.
+These are the OIDs Nictiz binds to in `nl-core-AllergyIntolerance` and
+`nl-core-MedicationContraIndication`, so a coding you send here also works in any Dutch system
+following those profiles.
 
-**Copy these strings exactly, and send nothing else.** There is one accepted `system` per row and
-no lenient form: the bare code-system token — `PRK`, `HPK`, `SSK`, `SNK`, `OGGrp`, `CICode`, `ICPC`
-— is not a FHIR `system`, and sending one is a 400 on the element it was on. A rejection lists the
-URIs the element accepts:
+**Copy these strings exactly.** One accepted `system` per row, no lenient form: a bare token —
+`PRK`, `HPK`, `SSK`, `SNK`, `OGGrp`, `CICode`, `ICPC` — is not a FHIR `system` and is a 400 on that
+element. A rejection lists the accepted URIs:
 
 ```
 AllergyIntolerance.code has no coding in a system this interface routes; expected one of
@@ -1018,39 +907,36 @@ AllergyIntolerance.code has no coding in a system this interface routes; expecte
 urn:oid:2.16.840.1.113883.2.4.4.1.902.122]
 ```
 
-The G-Standaard tables are licensed and are not distributed with the profiles, so what is checked
-is the `system`, not the code: a coding from a system above passes with a warning that its code
-could not be verified, and a coding from any other system is an error. The one code shape that *is*
-checked is ICPC-1 NL, by an invariant rather than by expansion.
+The G-Standaard tables are licensed and not distributed with the profiles, so the `system` is
+checked and the code is not: a coding from a system above passes with a warning, one from any other
+system is an error. The only code shape checked is ICPC-1 NL, by an invariant.
 
 ## Extensions
 
 Two, both Digitalis-defined because no national artifact covers them. Both canonicals dereference:
-a browser gets the definition page, `Accept: application/fhir+json` gets the `StructureDefinition`.
+a browser gets the definition page, `Accept: application/fhir+json` the `StructureDefinition`.
 
 **`ext-Dosage.CodedDirections`** —
 `http://spec.digitalis.nl/fhir/StructureDefinition/ext-Dosage.CodedDirections`, `valueString`. The
 NHG Tabel 25 coded instruction, e.g. `"3-4D1S; gedurende max. 1 maand"`.
 
-This is the dosing instruction **in both directions**. Store it and hand it back unchanged unless
-you mean to change the dose; `Dosage.text` beside it is the human-readable form, for display only.
-If you do not parse Tabel 25, treat the string as opaque and pass it through — a pharmacy system
-downstream reads it natively. No `timing` or `doseAndRate` is produced and any you send is
-**ignored**, so to change a dose, edit this extension.
+The dosing instruction **in both directions**: store it and hand it back unchanged unless you mean
+to change the dose. `Dosage.text` beside it is display only. If you do not parse Tabel 25, treat
+the string as opaque — a pharmacy system downstream reads it natively. No `timing` or `doseAndRate`
+is produced, and any you send is **ignored**.
 
 **`ext-MedicationRequest.OpiumActClassification`** —
 `http://spec.digitalis.nl/fhir/StructureDefinition/ext-MedicationRequest.OpiumActClassification`,
 `valueCodeableConcept`. A G-Standaard bijzonder kenmerk, present only when the product falls under
 the Opiumwet.
 
-Only code `2` ("Product valt onder Opiumwet in volle omvang") is emitted today. Read the code
-rather than treating the extension as a boolean: `65` and `107` carry different handling rules for
-a pharmacist and may appear later, so switch on the code and have a default branch.
+Only code `2` ("Product valt onder Opiumwet in volle omvang") is emitted today, but switch on the
+code with a default branch rather than treating the extension as a boolean: `65` and `107` carry
+different handling rules for a pharmacist and may appear later.
 
 ## Errors
 
-Every error is an `OperationOutcome`, the 401s included, so one error path in your client handles
-all of them: no response in this API is un-parseable by a FHIR library.
+Every error is an `OperationOutcome`, the 401s included, so one error path handles all of them.
 
 | Condition | Status |
 | --- | --- |
@@ -1061,10 +947,9 @@ all of them: no response in this API is un-parseable by a FHIR library.
 | Prescriptor unreachable (`Could not reach Prescriptor`) or unparseable | 500 |
 | Medication surveillance unreachable, refused, or answering without a report | 500 |
 
-A 400 comes from one of three places. The messages below are quoted as returned, so you can
-recognise them while building.
+A 400 comes from one of three places, quoted as returned so you can recognise them.
 
-**The profile**, which is where most of them come from, in the FHIR validator's own wording:
+**The profile**, where most come from, in the FHIR validator's own wording:
 
 - `Slice 'Parameters.parameter:endSessionUrl': a matching slice is required, but not found` — a
   missing parameter
@@ -1085,22 +970,22 @@ recognise them while building.
   followed by a dot and two more (A01, U71.01).'`
 - `Constraint failed: fhirhub-http-url: 'Only http and https are accepted: …'`
 
-**The operation binding**, before the body is validated at all, when a parameter carries the wrong
-type:
+**The operation binding**, before the body is validated, when a parameter carries the wrong type:
 
 - `HAPI-0362: Request has parameter reason of type Coding but method expects type CodeableConcept`
 - `HAPI-0362: Request has parameter endSessionUrl of type StringType but method expects type UrlType`
 
-**This interface's own rules**, for the things a profile cannot express:
+**This interface's own rules**, for what a profile cannot express:
 
 - `G-Standaard has no product for PRK 404040, so it cannot take part in medication surveillance`
 - `LOINC code '718-7' is not a determination medication surveillance reads, so sending it would suggest it had been weighed. Accepted: [62238-1, 2823-3, …]`
 - `Observation.valueQuantity for 2823-3 (Kalium (serum of plasma)) must be in [mmol/L] as a UCUM code, not 'mg/dL': the upstream carries no unit, so the value is evaluated as mmol/L`
 - `PRK code '18996a' is not numeric`
+- `Parameters.parameter[5] has no name, so nothing here could tell what it is`
 - `The 'session' parameter is required` — on `$session-result`
 
-None of this wording is part of the contract. Branch on the HTTP status, and show `diagnostics` to
-whoever has to act on it rather than matching on the text.
+None of this wording is part of the contract: branch on the status, and show `diagnostics` to
+whoever has to act on it.
 
 ```json
 {
@@ -1119,69 +1004,61 @@ whoever has to act on it rather than matching on the text.
 ```
 
 Validator issues also carry `operationoutcome-issue-line`, `-issue-col` and `-message-id`
-extensions, trimmed here. `expression` and `location` are the two fields worth surfacing to a
-developer: they name the element that failed.
+extensions, trimmed here. `expression` and `location` name the element that failed.
 
 ## Behaviour to design around
 
 - **`$session-result` is single-use.** Requesting it ends the session in Prescriptor; a second call
   returns 401.
 - **Medication surveillance fails closed.** One unresolvable drug code fails the whole request with
-  a 400 that names it; nothing is silently skipped. Refresh the code and retry rather than dropping
-  the drug from the list.
-- **No patient identity comes back.** Correlate the Bundle with your own record using the session
-  id you requested it with.
+  a 400 naming it. Refresh the code rather than dropping the drug.
+- **No patient identity comes back.** Correlate on the session id you requested the Bundle with.
 - **Structured dosing is not round-tripped.** Edit the `CodedDirections` extension, not `timing`.
-- **A GPK-coded prescription cannot be handed back** to `$createrx-session`, which needs a PRK or an
-  HPK. See [`prescription`](#prescription).
+- **A GPK-coded prescription cannot be handed back** to `$createrx-session`, which needs a PRK or
+  an HPK. See [`prescription`](#prescription).
 - **Nothing in a request is ignored.** An unrecognised parameter name, a repeated single-valued
-  parameter and a wrong value type are all 400s, so a typo surfaces as a rejection rather than as a
-  session opened on partial data.
+  parameter and a wrong value type are all 400s, so a typo cannot open a session on partial data.
 - **Lab units are dropped.** Send values in the determination's own unit; a `Quantity.unit` is
   ignored.
 
 ## Moving from the JSON API
 
-If you are replacing an integration with the Prescriptor JSON API, the operations, the semantics
-and the HTTP status codes are the same. Three differences go beyond syntax:
+The operations, the semantics and the HTTP status codes are the same. Three differences go beyond
+syntax:
 
 - **Credentials move to the HTTP layer.** The organization id and key leave the request body and
-  become an HTTP Basic header. The values are unchanged.
-- **Drug codes in `medicationStatement` are resolved before the session opens.** Each PRK or HPK is
-  looked up in the G-Standaard and forwarded as a PRK + GPK (+ HPK) triple, and a code that cannot
-  be resolved fails the request with a 400. The JSON API forwards current medication at the level
-  you supply without that lookup, so a code it accepts can be rejected here. Check your codes
-  against a current G-Standaard before switching over.
-- **The code system stops being a separate field and becomes the `system` on the coding.** Where the
-  JSON API took a code alongside a `PRK`, `SSK` or `ICPC` token, here the token is replaced by the
-  URI from [Code systems](#code-systems). The tokens themselves are not accepted as a `system`.
+  become an HTTP Basic header, unchanged in value.
+- **Drug codes in `medicationStatement` are resolved before the session opens**, and one that
+  cannot be resolved fails the request with a 400. The JSON API adds no such lookup, so a code it
+  accepts can be rejected here — check your codes against a current G-Standaard before switching
+  over.
+- **The code system becomes the `system` on the coding.** Where the JSON API took a code alongside
+  a `PRK`, `SSK` or `ICPC` token, the token is replaced by the URI from
+  [Code systems](#code-systems). The tokens are not accepted as a `system`.
 
-Read the operation you are calling and the profile it names rather than porting your payloads
-field by field: that carries across assumptions the JSON API allowed and this one does not.
+Read the operation and the profile it names rather than porting your payloads field by field, which
+carries across assumptions the JSON API allowed and this one does not.
 
 ## Current limitations
 
 Things you may expect to be able to do, and cannot yet.
 
-- **No `meta.profile` is asserted** on any resource, so do not filter or route on it. Validate
-  against the profile URLs above explicitly instead. The IG's example instances carry one because
-  the publishing tool adds it; a live payload does not.
-- **nl-core is not derived from**, so do not expect these resources to satisfy nl-core. Three of the
-  five are blocked on Nictiz rather than on effort: `nl-core-MedicationContraIndication` profiles
-  `Flag` rather than `Condition`, `nl-core-LaboratoryTestResult` requires an `Observation.category`
-  this interface neither sends nor reads, and `nl-core-MedicationUse2` is not published in the
-  nl-core package. Ask Digitalis before building anything that depends on nl-core conformance.
-- **The artifacts are `draft`**, and while the status is `draft` the change policy allows a breaking
-  change at a minor version — see *Versioning and change policy* in the published guide. Agree with
-  Digitalis how you want to be told about a change before you go live.
+- **No `meta.profile` is asserted** on any resource, so validate against the profile URLs above
+  explicitly rather than routing on it. The IG's examples carry one because the publishing tool
+  adds it; a live payload does not.
+- **nl-core is not derived from**, and three of the five resources are blocked on Nictiz rather
+  than on effort: `nl-core-MedicationContraIndication` profiles `Flag` rather than `Condition`,
+  `nl-core-LaboratoryTestResult` requires an `Observation.category` this interface neither sends nor
+  reads, and `nl-core-MedicationUse2` is not published in the nl-core package. Ask Digitalis before
+  depending on nl-core conformance.
+- **The artifacts are `draft`**, and while they are, the change policy allows a breaking change at
+  a minor version — see *Versioning and change policy*.
 - **The G-Standaard code systems are not distributed**, so no validator can check a G-Standaard
-  *code* — only the `system` it came from. A wrong code inside a system this interface routes
-  reaches Prescriptor and comes back as a 400 from the medication lookup rather than as a validation
-  error.
-- **The medication-surveillance response is the youngest part of the contract.** Its profile
-  describes what the service emits today and is validated against real reports on every build, but
-  the severity mapping and the way a rule's text arrives are the likeliest things to move, and two
-  classes of rule cannot fire yet — see
+  *code*, only the `system` it came from. A wrong code inside a routed system reaches Prescriptor
+  and comes back as a 400 from the medication lookup rather than as a validation error.
+- **The medication-surveillance response is the youngest part of the contract.** The severity
+  mapping and the way a rule's text arrives are the likeliest things to move, and two classes of
+  rule cannot fire yet — see
   [What the answer does not cover yet](#what-the-answer-does-not-cover-yet).
 
 Questions, or a case this document does not cover: contact Digitalis.
