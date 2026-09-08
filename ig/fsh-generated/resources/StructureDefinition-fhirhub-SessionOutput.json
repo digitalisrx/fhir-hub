@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-SessionOutput",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SessionOutput",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "FhirHubSessionOutput",
   "title": "Session output",
   "status": "draft",

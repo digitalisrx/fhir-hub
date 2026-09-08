@@ -63,7 +63,10 @@
         <a href="surveillance.html">What it is</a>
       </li>
       <li>
-        <a href="check-medication.html">POST /fhir/surveillance/$check-medication</a>
+        <a href="check-medication-request.html">POST /fhir/surveillance/$check-medication-request</a>
+      </li>
+      <li>
+        <a href="check-medication-statement.html">POST /fhir/surveillance/$check-medication-statement</a>
       </li>
     </ul>
   </li>

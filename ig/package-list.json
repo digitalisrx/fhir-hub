@@ -2,8 +2,18 @@
   "package-id": "nl.digitalis.fhirhub",
   "title": "Digitalis fhir-hub Implementation Guide",
   "canonical": "http://spec.digitalis.nl/fhir",
-  "introduction": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication weighs proposed prescriptions against a patient's dossier and answers with the signals that fire.",
+  "introduction": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication-request weighs proposed prescriptions against a patient's dossier and answers with the signals that fire.",
   "list": [
+    {
+      "version": "0.4.0",
+      "date": "2026-09-07",
+      "desc": "Two breaking changes and one addition on the surveillance contract. The operation is renamed: $check-medication becomes $check-medication-request, and the old name is not served. prescription is now required there (1..*), so a request carrying only medicationStatement is refused where it was checked before, and the invariant fhirhub-something-to-check is removed with it. And a second operation answers that question properly: $check-medication-statement checks a patient’s current medication with every entry under test, on a profile of its own that accepts no prescription. The response shape is unchanged for both. Nothing on the EVS contract changed.",
+      "path": "http://spec.digitalis.nl/fhir/0.4.0",
+      "status": "draft",
+      "sequence": "Draft",
+      "fhirversion": "4.0.1",
+      "current": true
+    },
     {
       "version": "0.3.0",
       "date": "2026-09-07",
@@ -11,8 +21,7 @@
       "path": "http://spec.digitalis.nl/fhir/0.3.0",
       "status": "draft",
       "sequence": "Draft",
-      "fhirversion": "4.0.1",
-      "current": true
+      "fhirversion": "4.0.1"
     },
     {
       "version": "0.2.0",

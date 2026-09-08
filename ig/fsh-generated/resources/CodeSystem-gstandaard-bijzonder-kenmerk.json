@@ -7,7 +7,7 @@
   "title": "G-Standaard bijzondere kenmerken (Opiumwet)",
   "description": "The Opiumwet subset of G-Standaard bestand BST401T (thesaurus BST922T). No OID is registered for this table, so a Digitalis-local URI is used.",
   "url": "http://spec.digitalis.nl/fhir/CodeSystem/gstandaard-bijzonder-kenmerk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "concept": [
     {
       "code": "2",

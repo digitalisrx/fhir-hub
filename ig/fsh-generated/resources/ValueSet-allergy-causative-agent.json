@@ -6,7 +6,7 @@
   "title": "Allergy causative agent (SSK, SNK, OGGrp)",
   "description": "Causative agents fhir-hub routes to Prescriptor. Which member carries which subsystem is set by prescriptor-api's OpenSessionRequestBuilder.getAllergies.",
   "url": "http://spec.digitalis.nl/fhir/ValueSet/allergy-causative-agent",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "experimental": false,
   "compose": {
     "include": [

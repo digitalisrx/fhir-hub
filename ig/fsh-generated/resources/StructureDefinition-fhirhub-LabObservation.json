@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-LabObservation",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "FhirHubLabObservation",
   "title": "fhir-hub laboratory Observation",
   "status": "draft",

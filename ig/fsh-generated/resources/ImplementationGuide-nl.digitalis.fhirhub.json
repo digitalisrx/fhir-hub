@@ -2,7 +2,7 @@
   "resourceType": "ImplementationGuide",
   "id": "nl.digitalis.fhirhub",
   "url": "http://spec.digitalis.nl/fhir/ImplementationGuide/nl.digitalis.fhirhub",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "DigitalisFhirHub",
   "title": "Digitalis fhir-hub Implementation Guide",
   "status": "draft",
@@ -27,7 +27,7 @@
       ]
     }
   ],
-  "description": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication request contract is published but not yet implemented.",
+  "description": "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication-request weighs proposed prescriptions against a patient's dossier and whose $check-medication-statement weighs the dossier itself, both answering with the signals that fire.",
   "jurisdiction": [
     {
       "coding": [
@@ -46,19 +46,43 @@
     "resource": [
       {
         "reference": {
+          "reference": "Parameters/ExampleSurveillanceInput"
+        },
+        "name": "$check-medication-request example",
+        "description": "One proposed prescription weighed against a patient's current medication, allergy, contra-indication and lab result.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+      },
+      {
+        "reference": {
+          "reference": "Parameters/ExampleSurveillanceReferenceCase"
+        },
+        "name": "$check-medication-request example, the reference case",
+        "description": "The FHIR form of the request Digitalis documents as example-1-req.xml: metformine proposed for a pregnant patient with an eGFR of 35 who already takes ibuprofen and omeprazol. It is the payload behind the three beslisregel signals in that document's response, and it also raises the classic allergy and dose-control signals.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+      },
+      {
+        "reference": {
           "reference": "StructureDefinition/fhirhub-SurveillanceInput"
         },
-        "name": "$check-medication input",
-        "description": "The body of POST /fhir/surveillance/$check-medication: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue.",
+        "name": "$check-medication-request input",
+        "description": "The body of POST /fhir/surveillance/$check-medication-request: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue.",
         "exampleBoolean": false
       },
       {
         "reference": {
-          "reference": "Parameters/ExampleSurveillanceInput"
+          "reference": "Parameters/ExampleStatementCheck"
         },
-        "name": "$check-medication request",
-        "description": "One proposed prescription weighed against a patient's current medication, allergy, contra-indication and lab result. NOT IMPLEMENTED: a request like this is answered with 501.",
-        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+        "name": "$check-medication-statement example",
+        "description": "A patient's current medication checked against itself and their context: two drugs, an allergy and an eGFR of 35, with no prescription proposed. Note that there is no prescription parameter — this profile does not define one.",
+        "exampleCanonical": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput"
+      },
+      {
+        "reference": {
+          "reference": "StructureDefinition/fhirhub-SurveillanceStatementInput"
+        },
+        "name": "$check-medication-statement input",
+        "description": "The body of POST /fhir/surveillance/$check-medication-statement: a patient's context and the medication they are already taking, with every entry under test rather than serving as the background to a proposal. The signals come back as a Bundle of DetectedIssue, exactly as for $check-medication-request.",
+        "exampleBoolean": false
       },
       {
         "reference": {
@@ -349,8 +373,13 @@
           "generation": "markdown"
         },
         {
-          "nameUrl": "check-medication.html",
-          "title": "POST /fhir/surveillance/$check-medication",
+          "nameUrl": "check-medication-request.html",
+          "title": "POST /fhir/surveillance/$check-medication-request",
+          "generation": "markdown"
+        },
+        {
+          "nameUrl": "check-medication-statement.html",
+          "title": "POST /fhir/surveillance/$check-medication-statement",
           "generation": "markdown"
         },
         {

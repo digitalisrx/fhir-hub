@@ -1,13 +1,13 @@
 {
   "resourceType": "StructureDefinition",
-  "id": "fhirhub-SurveillanceInput",
-  "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput",
+  "id": "fhirhub-SurveillanceStatementInput",
+  "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput",
   "version": "0.4.0",
-  "name": "FhirHubSurveillanceInput",
-  "title": "$check-medication-request input",
+  "name": "FhirHubSurveillanceStatementInput",
+  "title": "$check-medication-statement input",
   "status": "draft",
   "experimental": true,
-  "description": "The body of POST /fhir/surveillance/$check-medication-request: the patient's context plus the prescriptions to check against it. A conformant request is weighed by the G-Standaard's medisch-farmaceutische beslisregels and by the classic allergy, age, duplicate-medication and dose checks, and the signals come back as a Bundle of DetectedIssue.",
+  "description": "The body of POST /fhir/surveillance/$check-medication-statement: a patient's context and the medication they are already taking, with every entry under test rather than serving as the background to a proposal. The signals come back as a Bundle of DetectedIssue, exactly as for $check-medication-request.",
   "fhirVersion": "4.0.1",
   "kind": "resource",
   "abstract": false,
@@ -81,7 +81,6 @@
         "id": "Parameters.parameter:xisId.value[x]",
         "path": "Parameters.parameter.value[x]",
         "short": "Your system id; identifies your product, not the practice",
-        "comment": "The same value you send to the session operations, and required here for the same reason: a log line has to be attributable to a supplier and a release. Never forwarded upstream.",
         "min": 1,
         "type": [
           {
@@ -94,7 +93,7 @@
             "severity": "error",
             "human": "Must contain at least one non-whitespace character.",
             "expression": "$this.matches('[^\\\\s]')",
-            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput"
           }
         ]
       },
@@ -135,7 +134,7 @@
             "severity": "error",
             "human": "Must contain at least one non-whitespace character.",
             "expression": "$this.matches('[^\\\\s]')",
-            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+            "source": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput"
           }
         ]
       },
@@ -150,49 +149,12 @@
         "max": "0"
       },
       {
-        "id": "Parameters.parameter:prescription",
-        "path": "Parameters.parameter",
-        "sliceName": "prescription",
-        "short": "The prescriptions to check; at least one, repeated for more than one",
-        "comment": "Required: at least one prescription is what this operation weighs. The same profile $createrx-session takes, so a prescription can be checked and then handed to a session without being reshaped. Repeatable here where the session accepts one, because a host may want a whole proposed regimen weighed at once — and because two proposed drugs can interact with each other and not with anything the patient already takes.",
-        "min": 1,
-        "max": "*"
-      },
-      {
-        "id": "Parameters.parameter:prescription.name",
-        "path": "Parameters.parameter.name",
-        "fixedString": "prescription"
-      },
-      {
-        "id": "Parameters.parameter:prescription.value[x]",
-        "path": "Parameters.parameter.value[x]",
-        "max": "0"
-      },
-      {
-        "id": "Parameters.parameter:prescription.resource",
-        "path": "Parameters.parameter.resource",
-        "min": 1,
-        "type": [
-          {
-            "code": "MedicationRequest",
-            "profile": [
-              "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-PrescriptionInput"
-            ]
-          }
-        ]
-      },
-      {
-        "id": "Parameters.parameter:prescription.part",
-        "path": "Parameters.parameter.part",
-        "max": "0"
-      },
-      {
         "id": "Parameters.parameter:medicationStatement",
         "path": "Parameters.parameter",
         "sliceName": "medicationStatement",
-        "short": "The patient's current medication",
-        "comment": "Optional only in the sense that the profile cannot know what the patient takes. Sending an incomplete list is the one error nothing downstream can detect: the answer will be about the list you sent, not about the patient.",
-        "min": 0,
+        "short": "The medication to check; at least one, and all of it is under test",
+        "comment": "Required, and unlike on $check-medication-request every entry is itself checked: for allergy, for age, for dose, and against every other entry for duplicate medication. Send the patient's whole current list — an incomplete one is the one error nothing downstream can detect, because the answer will be about the list you sent.",
+        "min": 1,
         "max": "*"
       },
       {

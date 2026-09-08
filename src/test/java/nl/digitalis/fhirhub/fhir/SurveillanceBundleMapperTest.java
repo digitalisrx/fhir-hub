@@ -32,7 +32,8 @@ class SurveillanceBundleMapperTest {
 
 	private final Bundle bundle = mapper.toBundle(
 			new MedicationSurveillanceResponseParser().parse(
-					Fixtures.hubXml("medication-surveillance-response.xml")));
+					Fixtures.hubXml("medication-surveillance-response.xml")),
+			SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
 	@Test
 	void returnsOneDetectedIssuePerSignal() {
@@ -77,7 +78,8 @@ class SurveillanceBundleMapperTest {
 	void leavesSeverityAbsentWhenTheReportStatedNoLevel() {
 		Bundle levelless = mapper.toBundle(new SurveillanceReport("CRID", "2.3", null, 1,
 				List.of(new SurveillanceFinding("hub-dosage-control-5916", "1", null,
-						"Doseringscontrole", null, "Geen doseringsaanpassing.", List.of()))));
+						"Doseringscontrole", null, "Geen doseringsaanpassing.", List.of()))),
+				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
 		assertThat(((DetectedIssue) levelless.getEntryFirstRep().getResource()).hasSeverity()).isFalse();
 	}
@@ -134,7 +136,7 @@ class SurveillanceBundleMapperTest {
 	@Test
 	void returnsAnEmptyBundleForAReportThatFoundNothing() {
 		Bundle allClear = mapper.toBundle(new MedicationSurveillanceResponseParser()
-				.parse(Fixtures.hubXml("empty-report-response.xml")));
+				.parse(Fixtures.hubXml("empty-report-response.xml")), SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
 		assertThat(allClear.getEntry()).isEmpty();
 		assertThat(allClear.getIdentifier().getValue()).isEqualTo("0EA8D2C1-0000-4448-A20E-EFEA660C7627");
@@ -152,7 +154,8 @@ class SurveillanceBundleMapperTest {
 		Bundle allergy = mapper.toBundle(new SurveillanceReport("CRID", "2.3", LocalDateTime.now(), 1,
 				List.of(new SurveillanceFinding("hub-allergy-snk-10499", "1", 1, "Allergie TALK", null,
 						"Overgevoeligheid", List.of(new FindingContext(Kind.ALLERGY, "5470", "TALK",
-								List.of(new CodedItem("SNK", "10499")), null))))));
+								List.of(new CodedItem("SNK", "10499")), null))))),
+				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
 		DetectedIssue issue = (DetectedIssue) allergy.getEntryFirstRep().getResource();
 		assertThat(issue.getEvidenceFirstRep().getCodeFirstRep().getCodingFirstRep().getSystem())

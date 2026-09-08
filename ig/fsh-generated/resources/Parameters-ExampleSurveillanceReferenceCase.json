@@ -1,0 +1,298 @@
+{
+  "resourceType": "Parameters",
+  "id": "ExampleSurveillanceReferenceCase",
+  "meta": {
+    "profile": [
+      "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput"
+    ]
+  },
+  "parameter": [
+    {
+      "name": "patient",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ReferencePatient",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Patient"
+          ]
+        },
+        "gender": "female",
+        "birthDate": "2007-09-07"
+      }
+    },
+    {
+      "name": "xisId",
+      "valueString": "xis-001"
+    },
+    {
+      "name": "xisVersion",
+      "valueString": "1.0"
+    },
+    {
+      "name": "prescription",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "9064",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-PrescriptionInput"
+          ]
+        },
+        "status": "active",
+        "intent": "order",
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+              "code": "1090",
+              "display": "METFORMINE TABLET   500MG"
+            },
+            {
+              "system": "http://www.whocc.no/atc",
+              "code": "A10BA02"
+            }
+          ]
+        },
+        "dosageInstruction": [
+          {
+            "extension": [
+              {
+                "url": "http://spec.digitalis.nl/fhir/StructureDefinition/ext-Dosage.CodedDirections",
+                "valueString": "1D1T"
+              }
+            ],
+            "text": "1 X per dag 1 tablet"
+          }
+        ],
+        "dispenseRequest": {
+          "quantity": {
+            "value": 20,
+            "system": "urn:oid:2.16.840.1.113883.2.4.4.1.900.2",
+            "code": "ST"
+          },
+          "validityPeriod": {
+            "start": "2026-09-06",
+            "end": "2026-09-26"
+          }
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "urn:oid:2.16.840.1.113883.2.4.4.31.1",
+                "code": "K86"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "medicationStatement",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "9065",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-MedicationStatement"
+          ]
+        },
+        "status": "active",
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+              "code": "27278",
+              "display": "IBUPROFEN TABLET 400MG"
+            }
+          ]
+        },
+        "effectivePeriod": {
+          "start": "2026-09-06",
+          "end": "2026-09-11"
+        }
+      }
+    },
+    {
+      "name": "medicationStatement",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "9066",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-MedicationStatement"
+          ]
+        },
+        "status": "active",
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+              "code": "60062",
+              "display": "OMEPRAZOL CAPSULE MSR 20MG"
+            }
+          ]
+        },
+        "effectivePeriod": {
+          "start": "2026-09-06",
+          "end": "2026-09-13"
+        }
+      }
+    },
+    {
+      "name": "allergyIntolerance",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "5469",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-AllergyIntolerance"
+          ]
+        },
+        "patient": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "code": "active",
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.1.902.122",
+              "code": "35",
+              "display": "PENICILLINES"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "allergyIntolerance",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "5470",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-AllergyIntolerance"
+          ]
+        },
+        "patient": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "code": "active",
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.1.750",
+              "code": "10499",
+              "display": "TALK"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "condition",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "5468",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Condition"
+          ]
+        },
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.1.902.40",
+              "code": "1320",
+              "display": "ZWANGERSCHAP"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "observation",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "1667",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation"
+          ]
+        },
+        "valueQuantity": {
+          "system": "http://unitsofmeasure.org",
+          "value": 35,
+          "code": "mL/min/{1.73_m2}"
+        },
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "62238-1"
+            }
+          ]
+        },
+        "effectiveDateTime": "2026-09-06T09:05:11+02:00"
+      }
+    }
+  ]
+}

@@ -19,7 +19,9 @@ import ca.uhn.fhir.rest.annotation.OperationParam;
 import ca.uhn.fhir.rest.annotation.ResourceParam;
 import nl.digitalis.fhirhub.auth.CredentialsResolver;
 import nl.digitalis.fhirhub.fhir.Profiles;
+import nl.digitalis.fhirhub.fhir.StatementCheckInputs;
 import nl.digitalis.fhirhub.fhir.SurveillanceBundleMapper;
+import nl.digitalis.fhirhub.fhir.SurveillanceBundleMapper.DrugsUnderTest;
 import nl.digitalis.fhirhub.fhir.SurveillanceInputs;
 import nl.digitalis.fhirhub.fhir.SurveillanceParametersMapper;
 import nl.digitalis.fhirhub.hub.HubClient;
@@ -66,7 +68,9 @@ import nl.digitalis.fhirhub.validation.ProfileValidator;
 @Component
 public class SurveillanceOperationProvider extends SurveillanceProvider {
 
-	public static final String CHECK_MEDICATION = "$check-medication";
+	public static final String CHECK_MEDICATION_REQUEST = "$check-medication-request";
+
+	public static final String CHECK_MEDICATION_STATEMENT = "$check-medication-statement";
 
 	private final ProfileValidator profileValidator;
 
@@ -98,12 +102,12 @@ public class SurveillanceOperationProvider extends SurveillanceProvider {
 	 * <p>{@code prescription} and {@code medicationStatement} reuse the resource profiles of the
 	 * EVS contract, so a host that already builds a session payload has nothing new to shape.
 	 */
-	@Operation(name = CHECK_MEDICATION, idempotent = false)
+	@Operation(name = CHECK_MEDICATION_REQUEST, idempotent = false)
 	public Bundle checkMedication(
 			@OperationParam(name = "patient", min = 1, max = 1) Patient patient,
 			@OperationParam(name = "xisId", min = 1, max = 1) StringType xisId,
 			@OperationParam(name = "xisVersion", min = 1, max = 1) StringType xisVersion,
-			@OperationParam(name = "prescription", min = 0, max = OperationParam.MAX_UNLIMITED) List<MedicationRequest> prescription,
+			@OperationParam(name = "prescription", min = 1, max = OperationParam.MAX_UNLIMITED) List<MedicationRequest> prescription,
 			@OperationParam(name = "medicationStatement", min = 0, max = OperationParam.MAX_UNLIMITED) List<MedicationStatement> medicationStatement,
 			@OperationParam(name = "allergyIntolerance", min = 0, max = OperationParam.MAX_UNLIMITED) List<AllergyIntolerance> allergyIntolerance,
 			@OperationParam(name = "condition", min = 0, max = OperationParam.MAX_UNLIMITED) List<Condition> condition,
@@ -121,6 +125,52 @@ public class SurveillanceOperationProvider extends SurveillanceProvider {
 				parametersMapper.toSurveillanceRequest(inputs, LocalDate.now()),
 				credentials.current());
 
-		return bundleMapper.toBundle(report);
+		return bundleMapper.toBundle(report, DrugsUnderTest.MEDICATION_REQUEST);
+	}
+
+	/**
+	 * The same check with the dossier as its subject: no prescription is proposed, and every
+	 * {@code medicationStatement} is examined rather than serving as the context for something
+	 * else.
+	 *
+	 * <p><strong>What this answers that the other operation does not</strong> is "what is wrong
+	 * with what this patient is already taking" — an allergy or a contra-indication that was
+	 * recorded after the medication was started, a dose that no longer fits a nierfunctie that has
+	 * since dropped, a duplicate between two drugs neither of which is new. A periodic medication
+	 * review asks exactly this, and it cannot be phrased as a proposal without inventing one.
+	 *
+	 * <p><strong>It takes no {@code prescription}</strong>, and the profile's closed slicing
+	 * refuses one rather than ignoring it: a request that named a proposed drug and had it dropped
+	 * would be answered for its context alone, which is a check of the wrong thing reported as a
+	 * check. A host with a drug to weigh wants {@code $check-medication-request}.
+	 *
+	 * <p>Everything downstream is shared — the same profiles on the resources, the same
+	 * {@code DigitalisRx} document, the same upstream, the same {@code Bundle} of
+	 * {@code DetectedIssue}, and the same rule that an empty {@code Bundle} can only mean the check
+	 * ran and nothing fired. The one thing that differs in the answer is that
+	 * {@code DetectedIssue.implicated} names {@code MedicationStatement}, because that is what the
+	 * host sent; see {@code SurveillanceBundleMapper.DrugsUnderTest}.
+	 */
+	@Operation(name = CHECK_MEDICATION_STATEMENT, idempotent = false)
+	public Bundle checkMedicationStatement(
+			@OperationParam(name = "patient", min = 1, max = 1) Patient patient,
+			@OperationParam(name = "xisId", min = 1, max = 1) StringType xisId,
+			@OperationParam(name = "xisVersion", min = 1, max = 1) StringType xisVersion,
+			@OperationParam(name = "medicationStatement", min = 1, max = OperationParam.MAX_UNLIMITED) List<MedicationStatement> medicationStatement,
+			@OperationParam(name = "allergyIntolerance", min = 0, max = OperationParam.MAX_UNLIMITED) List<AllergyIntolerance> allergyIntolerance,
+			@OperationParam(name = "condition", min = 0, max = OperationParam.MAX_UNLIMITED) List<Condition> condition,
+			@OperationParam(name = "observation", min = 0, max = OperationParam.MAX_UNLIMITED) List<Observation> observation,
+			@ResourceParam Parameters body) {
+
+		profileValidator.validate(body, Profiles.SURVEILLANCE_STATEMENT_INPUT);
+
+		StatementCheckInputs inputs = new StatementCheckInputs(patient, xisId, xisVersion,
+				medicationStatement, allergyIntolerance, condition, observation);
+
+		SurveillanceReport report = hub.checkMedication(
+				parametersMapper.toStatementCheckRequest(inputs, LocalDate.now()),
+				credentials.current());
+
+		return bundleMapper.toBundle(report, DrugsUnderTest.MEDICATION_STATEMENT);
 	}
 }

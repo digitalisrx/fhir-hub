@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-AllergyIntolerance",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-AllergyIntolerance",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "FhirHubAllergyIntolerance",
   "title": "fhir-hub AllergyIntolerance",
   "status": "draft",

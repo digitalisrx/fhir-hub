@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-Condition",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Condition",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "FhirHubCondition",
   "title": "fhir-hub Condition",
   "status": "draft",

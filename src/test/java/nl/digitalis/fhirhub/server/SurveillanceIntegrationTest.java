@@ -7,6 +7,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -103,7 +105,7 @@ class SurveillanceIntegrationTest {
 	void returnsTheReportAsABundleOfDetectedIssues() {
 		stub("medication-surveillance-response.xml");
 
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request",
 				surveillanceParameters());
 
 		assertThat(response.statusCode()).isEqualTo(200);
@@ -128,7 +130,7 @@ class SurveillanceIntegrationTest {
 	void sendsAWellFormedDigitalisRxDocumentCarryingTheCredentials() {
 		stub("medication-surveillance-response.xml");
 
-		postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		postFhir("/fhir/surveillance/$check-medication-request", surveillanceParameters());
 
 		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
 		assertThat(sent)
@@ -161,7 +163,7 @@ class SurveillanceIntegrationTest {
 	void returnsAnEmptyBundleWhenTheCheckRanAndNothingFired() {
 		stub("empty-report-response.xml");
 
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request",
 				surveillanceParameters());
 
 		assertThat(response.statusCode()).isEqualTo(200);
@@ -181,21 +183,21 @@ class SurveillanceIntegrationTest {
 				.withHeader("Content-Type", "text/xml")
 				.withBody(Fixtures.hubXml("fault-response.xml"))));
 
-		HttpResponse<String> fault = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		HttpResponse<String> fault = postFhir("/fhir/surveillance/$check-medication-request", surveillanceParameters());
 		assertThat(fault.statusCode()).isEqualTo(500);
 		assertThat(diagnostics(fault)).contains("could not be run");
 
 		hub.resetAll();
 		stub("no-report-response.xml");
 
-		HttpResponse<String> noReport = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		HttpResponse<String> noReport = postFhir("/fhir/surveillance/$check-medication-request", surveillanceParameters());
 		assertThat(noReport.statusCode()).isEqualTo(500);
 		assertThat(diagnostics(noReport)).contains("no report");
 
 		hub.resetAll();
 		hub.stubFor(post(anyUrl()).willReturn(aResponse().withStatus(502).withBody("<html>Bad Gateway</html>")));
 
-		HttpResponse<String> garbage = postFhir("/fhir/surveillance/$check-medication", surveillanceParameters());
+		HttpResponse<String> garbage = postFhir("/fhir/surveillance/$check-medication-request", surveillanceParameters());
 		assertThat(garbage.statusCode()).isEqualTo(500);
 		assertThat(diagnostics(garbage)).contains("no conclusion may be drawn");
 	}
@@ -212,7 +214,7 @@ class SurveillanceIntegrationTest {
 		((MedicationStatement) resource(in, "medicationStatement"))
 				.getMedicationCodeableConcept().getCodingFirstRep().setCode("404404");
 
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request", in);
 
 		assertThat(response.statusCode()).isEqualTo(400);
 		assertThat(diagnostics(response)).contains("G-Standaard has no product for HPK 404404");
@@ -228,7 +230,7 @@ class SurveillanceIntegrationTest {
 		Parameters in = surveillanceParameters();
 		in.getParameter().removeIf(p -> "xisId".equals(p.getName()));
 
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request", in);
 
 		assertThat(response.statusCode()).isEqualTo(400);
 		assertThat(diagnostics(response)).contains("xisId");
@@ -242,10 +244,150 @@ class SurveillanceIntegrationTest {
 		in.getParameter().removeIf(p -> "prescription".equals(p.getName())
 				|| "medicationStatement".equals(p.getName()));
 
-		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication", in);
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request", in);
 
 		assertThat(response.statusCode()).isEqualTo(400);
-		assertThat(response.body()).contains("fhirhub-something-to-check");
+		assertThat(diagnostics(response)).contains("prescription");
+		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
+	}
+
+	/**
+	 * A dossier with no prescription in it was a valid request until 0.4.0 — the check ran over
+	 * the current medication and looked for interactions among it. {@code prescription} is 1..*
+	 * now, so this is a 400, and it is pinned because the shape is one a host may already send:
+	 * accepting it and answering "no signals" would be the false negative this contract is built
+	 * to avoid, and silently checking nothing would be worse than refusing.
+	 */
+	@Test
+	void refusesARequestCarryingOnlyCurrentMedication() {
+		Parameters in = surveillanceParameters();
+		in.getParameter().removeIf(p -> "prescription".equals(p.getName()));
+
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request", in);
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		assertThat(diagnostics(response)).contains("prescription");
+		assertThat(hub.findAll(postRequestedFor(anyUrl())))
+				.as("nothing reaches the Hub for a request that cannot be checked")
+				.isEmpty();
+	}
+
+	/**
+	 * The dossier check, end to end. What makes it a check rather than a plausible-looking answer
+	 * is the marking: every {@code medicationStatement} has to leave here as {@code pending="true"}
+	 * and {@code trigger="true"}, because the Hub gates all of its own G-Standaard checks on at
+	 * least one drug carrying {@code pending} ({@code MbFactory.process}) and returns a complete,
+	 * empty report otherwise. Sending this list as the standing dossier would answer 200 with no
+	 * findings for a check that never ran.
+	 */
+	@Test
+	void checksAWholeDossierWithEveryEntryUnderTest() {
+		stub("medication-surveillance-response.xml");
+
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-statement",
+				statementCheckParameters());
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(parser.parseResource(Bundle.class, response.body()).getEntry()).hasSize(3);
+
+		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+		assertThat(sent)
+				.as("every entry is a subject of the check, so every drug carries both marks")
+				.contains("pending=\"true\"")
+				.contains("trigger=\"true\"")
+				.contains("PRK=\"43800\" GPK=\"222222\" HPK=\"2106\"")
+				.contains("PRK=\"18996\" GPK=\"111111\"");
+		assertThat(sent)
+				.as("nothing is sent as context, because the dossier is the subject")
+				.doesNotContain("pending=\"false\"");
+	}
+
+	/**
+	 * A signal from the dossier check points at a {@code MedicationStatement}, not at a
+	 * {@code MedicationRequest}. The report cannot say which — it echoes back the {@code pending}
+	 * and {@code trigger} attributes this interface set, and those mean "under test" whichever
+	 * operation asked — so the operation is what decides, and a wrong decision here hands a host a
+	 * reference to a resource type it never sent.
+	 */
+	@Test
+	void namesTheHostsMedicationStatementAsTheImplicatedResource() {
+		stub("medication-surveillance-response.xml");
+
+		Bundle bundle = parser.parseResource(Bundle.class,
+				postFhir("/fhir/surveillance/$check-medication-statement", statementCheckParameters())
+						.body());
+
+		List<Reference> implicated = bundle.getEntry().stream()
+				.map(entry -> (DetectedIssue) entry.getResource())
+				.flatMap(issue -> issue.getImplicated().stream())
+				.toList();
+
+		assertThat(implicated).isNotEmpty();
+		assertThat(implicated).extracting(Reference::getType).containsOnly("MedicationStatement");
+	}
+
+	/** No prescription slice at all, so one sent here is refused rather than quietly dropped. */
+	@Test
+	void refusesAPrescriptionOnTheDossierCheck() {
+		Parameters in = statementCheckParameters();
+		in.addParameter().setName("prescription")
+				.setResource(surveillanceParameters().getParameter().stream()
+						.filter(p -> "prescription".equals(p.getName()))
+						.findFirst().orElseThrow().getResource());
+
+		HttpResponse<String> response =
+				postFhir("/fhir/surveillance/$check-medication-statement", in);
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		// The closed-slicing message names the slices this profile does define rather than the one
+		// it was sent, which is the same wording an unknown parameter name gets — the point being
+		// that the payload is refused rather than answered for its context alone.
+		assertThat(diagnostics(response))
+				.contains("does not match any known slice")
+				.contains("slicing is CLOSED")
+				.contains("fhirhub-SurveillanceStatementInput");
+		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
+	}
+
+	/** The same fail-closed rule as the other operation, on the parameter that carries its subject. */
+	@Test
+	void refusesADossierCheckWithNoMedication() {
+		Parameters in = statementCheckParameters();
+		in.getParameter().removeIf(p -> "medicationStatement".equals(p.getName()));
+
+		HttpResponse<String> response =
+				postFhir("/fhir/surveillance/$check-medication-statement", in);
+
+		assertThat(response.statusCode()).isEqualTo(400);
+		assertThat(diagnostics(response)).contains("medicationStatement");
+		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
+	}
+
+	/**
+	 * The dossier check publishes its own parameter list, and what an integrator has to see in it
+	 * is the absence: no {@code prescription}, and a {@code medicationStatement} that is 1..*.
+	 */
+	@Test
+	void describesTheDossierChecksParametersWithNoPrescriptionAmongThem() {
+		CapabilityStatement statement = parser.parseResource(CapabilityStatement.class,
+				getAnonymous("/fhir/surveillance/metadata").body());
+		String definition = definitionOf(statement, "check-medication-statement");
+
+		assertThat(definition).endsWith("/fhir/surveillance/OperationDefinition/-s-check-medication-statement");
+
+		OperationDefinition operation = parser.parseResource(OperationDefinition.class,
+				send(HttpRequest.newBuilder(URI.create(definition)).GET().build()).body());
+
+		assertThat(operation.getParameter())
+				.extracting(p -> p.getName() + " " + p.getMin() + ".." + p.getMax() + " " + p.getType())
+				.containsExactly(
+						"patient 1..1 Patient",
+						"xisId 1..1 string",
+						"xisVersion 1..1 string",
+						"medicationStatement 1..* MedicationStatement",
+						"allergyIntolerance 0..* AllergyIntolerance",
+						"condition 0..* Condition",
+						"observation 0..* Observation");
 	}
 
 	/**
@@ -258,12 +400,34 @@ class SurveillanceIntegrationTest {
 		CapabilityStatement statement = parser.parseResource(CapabilityStatement.class,
 				getAnonymous("/fhir/surveillance/metadata").body());
 
-		assertThat(operationNames(statement)).containsExactly("check-medication");
+		assertThat(operationNames(statement))
+				.containsExactlyInAnyOrder("check-medication-request", "check-medication-statement");
 		assertThat(statement.getSoftware().getVersion())
 				.as("both bases report the release of the one Implementation Guide")
 				.matches("\\d+\\.\\d+\\.\\d+");
 		assertThat(statement.getImplementation().getDescription())
 				.contains("medication-surveillance contract");
+	}
+
+	/**
+	 * The 0.4.0 rename is a clean break: {@code $check-medication} was published and current at
+	 * 0.3.0, and this deployment does not answer it. Pinned as a test rather than left to the
+	 * changelog because "the old name is gone" is a claim about behaviour, and an integrator
+	 * reading the Breaking heading has to be able to rely on the status it names — a name that
+	 * quietly answered would be worse than either choice made deliberately.
+	 */
+	@Test
+	void theNameThisOperationHadAt0_3_0IsNoLongerServed() {
+		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication",
+				surveillanceParameters());
+
+		assertThat(response.statusCode())
+				.as("HAPI answers an unknown operation on a known base with 400, not 404")
+				.isEqualTo(400);
+		assertThat(response.body())
+				.as("a miss inside a known base is still a FHIR OperationOutcome")
+				.contains("OperationOutcome")
+				.contains("check-medication");
 	}
 
 	@Test
@@ -281,7 +445,7 @@ class SurveillanceIntegrationTest {
 		assertThat(getAnonymous("/fhir/surveillance/metadata").statusCode()).isEqualTo(200);
 
 		HttpResponse<String> refused = send(HttpRequest
-				.newBuilder(URI.create(url("/fhir/surveillance/$check-medication")))
+				.newBuilder(URI.create(url("/fhir/surveillance/$check-medication-request")))
 				.header("Content-Type", "application/fhir+json")
 				.POST(HttpRequest.BodyPublishers.ofString(
 						parser.encodeResourceToString(surveillanceParameters())))
@@ -300,11 +464,11 @@ class SurveillanceIntegrationTest {
 	void describesItsParametersInAnOperationDefinitionAnyoneCanRead() {
 		CapabilityStatement statement = parser.parseResource(CapabilityStatement.class,
 				getAnonymous("/fhir/surveillance/metadata").body());
-		String definition = statement.getRestFirstRep().getOperationFirstRep().getDefinition();
+		String definition = definitionOf(statement, "check-medication-request");
 
 		assertThat(definition)
 				.as("the address the Implementation Guide tells integrators to fetch")
-				.endsWith("/fhir/surveillance/OperationDefinition/-s-check-medication");
+				.endsWith("/fhir/surveillance/OperationDefinition/-s-check-medication-request");
 
 		HttpResponse<String> response = send(HttpRequest.newBuilder(URI.create(definition)).GET().build());
 		assertThat(response.statusCode()).isEqualTo(200);
@@ -316,7 +480,7 @@ class SurveillanceIntegrationTest {
 						"patient 1..1 Patient",
 						"xisId 1..1 string",
 						"xisVersion 1..1 string",
-						"prescription 0..* MedicationRequest",
+						"prescription 1..* MedicationRequest",
 						"medicationStatement 0..* MedicationStatement",
 						"allergyIntolerance 0..* AllergyIntolerance",
 						"condition 0..* Condition",
@@ -333,8 +497,101 @@ class SurveillanceIntegrationTest {
 		Parameters in = surveillanceParameters();
 		in.getParameter().removeIf(p -> "xisVersion".equals(p.getName()));
 
-		assertThat(postFhir("/fhir/surveillance/$check-medication", in).body())
+		assertThat(postFhir("/fhir/surveillance/$check-medication-request", in).body())
 				.contains(Profiles.SURVEILLANCE_INPUT);
+	}
+
+	/**
+	 * The published example is the documented request.
+	 *
+	 * <p>{@code ExampleSurveillanceReferenceCase} in the IG is the FHIR form of
+	 * {@code DigitalisRx-documentation/example-1-req.xml}, and this is what makes that claim true
+	 * rather than asserted: the example goes in over HTTP and the {@code DigitalisRx} the Hub would
+	 * have received is compared with the document it is the FHIR form of. Nothing else would notice
+	 * the example drifting — it satisfies its profile either way.
+	 *
+	 * <p>Two differences from that document are deliberate and are pinned here as differences, so
+	 * that reading them off the wire is not mistaken for a bug:
+	 * <ul>
+	 * <li>The metformine goes out as PRK + GPK with <strong>no HPK</strong>. The document carries
+	 * one, because the host that produced it had the drug at handelsproduct level too;
+	 * {@code selected="PRK"} there says which level it chose, and a PRK-coded FHIR entry resolves
+	 * to the pair.
+	 * <li>The two current-medication entries carry <strong>no dosing, supply or indication</strong>.
+	 * The document has all three on every drug; on this contract they travel with a
+	 * {@code prescription} and a {@code MedicationStatement} has nowhere to put them. Only the
+	 * proposal's dosing is read by the dose check, so nothing is lost that is read today — see the
+	 * README's open items.
+	 * </ul>
+	 */
+	@Test
+	void postsTheReferenceCaseAsDocumented() throws IOException {
+		stub("medication-surveillance-response.xml");
+
+		Parameters example = parser.parseResource(Parameters.class,
+				Files.readString(Path.of("ig", "fsh-generated", "resources",
+						"Parameters-ExampleSurveillanceReferenceCase.json")));
+
+		assertThat(postFhir("/fhir/surveillance/$check-medication-request", example).statusCode()).isEqualTo(200);
+
+		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+
+		assertThat(sent)
+				.as("the patient of the reference document")
+				.contains("<gender>F</gender>")
+				.contains("<dob>2007-09-07</dob>");
+
+		assertThat(drug(sent, 0))
+				.as("the metformine the signals are about, marked for both engines")
+				.contains("ATC=\"A10BA02\"")
+				.contains("UID=\"9064\"")
+				.contains("pending=\"true\"")
+				.contains("trigger=\"true\"")
+				.contains("date=\"2026-09-06\"")
+				.contains("dateEnd=\"2026-09-26\"")
+				.contains("directionCoded=\"1D1T\"")
+				.contains("directionCaption=\"1 X per dag 1 tablet\"")
+				.contains("supplyQuantity=\"20\" supplyUnit=\"ST\"")
+				.contains("PRK=\"1090\" GPK=\"3816\" selected=\"PRK\"")
+				.contains("caption=\"METFORMINE TABLET   500MG\"")
+				.contains("<RVV codeSystem=\"ICPC1\" codeValue=\"K86\"")
+				.doesNotContain("HPK=");
+
+		assertThat(drug(sent, 1))
+				.as("ibuprofen, as the standing dossier it is weighed against")
+				.contains("UID=\"9065\"")
+				.contains("pending=\"false\"")
+				.contains("date=\"2026-09-06\"")
+				.contains("dateEnd=\"2026-09-11\"")
+				.contains("PRK=\"27278\" GPK=\"51004\"")
+				.contains("caption=\"IBUPROFEN TABLET 400MG\"")
+				.doesNotContain("directionCoded")
+				.doesNotContain("supplyQuantity")
+				.doesNotContain("RVV");
+
+		assertThat(drug(sent, 2))
+				.contains("UID=\"9066\"")
+				.contains("PRK=\"60062\" GPK=\"114529\"")
+				.contains("caption=\"OMEPRAZOL CAPSULE MSR 20MG\"");
+
+		assertThat(sent)
+				.as("the dossier the rules read it against, each with the wording and id it came with")
+				.contains("<GStandaard OGGrp=\"35\" caption=\"PENICILLINES\" UID=\"5469\"")
+				.contains("<GStandaard SNK=\"10499\" caption=\"TALK\" UID=\"5470\"")
+				.contains("<GStandaard CICode=\"1320\" caption=\"ZWANGERSCHAP\" UID=\"5468\"")
+				// The eGFR, at the moment it was taken rather than at midnight, and with no NHG
+				// twin: a determination the beslisregels read stays LOINC-only.
+				.contains("<LOINC num=\"62238-1\"")
+				.contains("date=\"2026-09-06T09:05:11\"")
+				.contains("value=\"35\" UID=\"1667\"")
+				.doesNotContain("<NHG");
+	}
+
+	/** The nth {@code <drug>} element, so an assertion cannot pass on another drug's attribute. */
+	private String drug(String xml, int index) {
+		String[] drugs = xml.split("<drug ");
+
+		return drugs[index + 1].split("</drug>")[0];
 	}
 
 	private void stub(String fixture) {
@@ -422,6 +679,37 @@ class SurveillanceIntegrationTest {
 		parameters.addParameter().setName("observation").setResource(weight);
 
 		return parameters;
+	}
+
+	/**
+	 * The dossier check's payload: the shared context, and two medication entries rather than one,
+	 * because "the entire list is under test" is only visibly different from "one drug is" when
+	 * there is more than one.
+	 */
+	private Parameters statementCheckParameters() {
+		Parameters parameters = surveillanceParameters();
+		parameters.getParameter().removeIf(p -> "prescription".equals(p.getName()));
+
+		MedicationStatement second = new MedicationStatement();
+		second.setId("ms-2");
+		second.setStatus(MedicationStatement.MedicationStatementStatus.ACTIVE);
+		second.setSubject(absentReference());
+		second.getMedicationCodeableConcept().addCoding()
+				.setSystem(Systems.PRK)
+				.setCode("18996")
+				.setDisplay("PARACETAMOL ZETPIL 1000MG");
+
+		parameters.addParameter().setName("medicationStatement").setResource(second);
+
+		return parameters;
+	}
+
+	private String definitionOf(CapabilityStatement statement, String operation) {
+		return statement.getRestFirstRep().getOperation().stream()
+				.filter(o -> operation.equals(o.getName()))
+				.map(CapabilityStatement.CapabilityStatementRestResourceOperationComponent::getDefinition)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError(operation + " is not advertised"));
 	}
 
 	/** Mandatory in base R4, never read here — the same idiom the session examples use. */

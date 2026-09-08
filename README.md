@@ -37,8 +37,9 @@ medication surveillance* below. It talks to a different upstream (the Digitalis 
 and shares everything else:
 
 ```
-POST   /fhir/surveillance/$check-medication   Parameters  ->  Bundle (DetectedIssue)
-GET    /fhir/surveillance/metadata            ->  CapabilityStatement (unauthenticated)
+POST   /fhir/surveillance/$check-medication-request     Parameters  ->  Bundle (DetectedIssue)
+POST   /fhir/surveillance/$check-medication-statement   Parameters  ->  Bundle (DetectedIssue)
+GET    /fhir/surveillance/metadata                      ->  CapabilityStatement (unauthenticated)
 ```
 
 `software.version` on that statement is the release of the published specification the deployment
@@ -266,7 +267,7 @@ of its own.
 
 Everything above happens inside a session: the host hands over the medication list, Prescriptor
 runs surveillance while the care provider works, and the signals are shown in Prescriptor's own
-UI. `POST /fhir/surveillance/$check-medication` asks the same question directly — patient context
+UI. `POST /fhir/surveillance/$check-medication-request` asks the same question directly — patient context
 and one or more proposed prescriptions in, the signals that fire out — with no session, no browser
 round trip and nothing to poll.
 
@@ -582,7 +583,7 @@ Changing them alters clinical behaviour and needs its own decision.
   from this service (which costs a round trip per check), or a deployment restriction in front of
   the base. The first keeps this service free of a credential store, which is the property worth
   protecting.
-- **Publish a response profile for `$check-medication`, once the shape has been reviewed against
+- **Publish a response profile for `$check-medication-request`, once the shape has been reviewed against
   real reports.** The guide describes the Bundle and the `DetectedIssue` elements in prose and
   asserts no `meta.profile`, which is honest for a shape a week old and is not where it should
   stay. What to settle first: whether `DetectedIssue.code` should carry a coding for the class of

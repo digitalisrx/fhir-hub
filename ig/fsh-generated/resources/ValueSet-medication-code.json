@@ -6,7 +6,7 @@
   "title": "Medication code (PRK or HPK)",
   "description": "Product code levels accepted for current medication. Each entry carries its own level, so PRK and HPK may be mixed within one list.",
   "url": "http://spec.digitalis.nl/fhir/ValueSet/medication-code",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "experimental": false,
   "compose": {
     "include": [

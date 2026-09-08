@@ -22,8 +22,9 @@ Medication surveillance on its own: patient context and one or more proposed pre
 signals that fire out. No user interface, no session, no browser round trip.
 
 ```
-POST   /fhir/surveillance/$check-medication   Parameters  ->  Bundle (DetectedIssue)
-GET    /fhir/surveillance/metadata            ->  CapabilityStatement (unauthenticated)
+POST   /fhir/surveillance/$check-medication-request     Parameters  ->  Bundle (DetectedIssue)
+POST   /fhir/surveillance/$check-medication-statement   Parameters  ->  Bundle (DetectedIssue)
+GET    /fhir/surveillance/metadata                      ->  CapabilityStatement (unauthenticated)
 ```
 
 Both halves of Dutch medication surveillance answer this one call: the G-Standaard's
@@ -73,7 +74,8 @@ validate against directly are:
 | Prescriptor | `$createrx-session` request | [fhirhub-CreateRxSessionInput](StructureDefinition-fhirhub-CreateRxSessionInput.html) |
 | Prescriptor | session response | [fhirhub-SessionOutput](StructureDefinition-fhirhub-SessionOutput.html) |
 | Prescriptor | `$session-result` response | [fhirhub-ResultBundle](StructureDefinition-fhirhub-ResultBundle.html) |
-| Surveillance | `$check-medication` request | [fhirhub-SurveillanceInput](StructureDefinition-fhirhub-SurveillanceInput.html) — `experimental`, because the response shape is not final. There is no profile for the response |
+| Surveillance | `$check-medication-request` input | [fhirhub-SurveillanceInput](StructureDefinition-fhirhub-SurveillanceInput.html) — `experimental`, because the response shape is not final. There is no profile for the response |
+| Surveillance | `$check-medication-statement` input | [fhirhub-SurveillanceStatementInput](StructureDefinition-fhirhub-SurveillanceStatementInput.html) — the dossier check. Defines no `prescription` parameter, and the slicing is closed |
 
 The resource profiles inside those payloads — patient, current medication, allergies,
 contra-indications, lab results — are shared by both applications, and are on the

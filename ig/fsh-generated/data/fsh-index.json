@@ -40,12 +40,28 @@
     "endLine": 95
   },
   {
+    "outputFile": "Parameters-ExampleStatementCheck.json",
+    "fshName": "ExampleStatementCheck",
+    "fshType": "Instance",
+    "fshFile": "examples.fsh",
+    "startLine": 423,
+    "endLine": 441
+  },
+  {
     "outputFile": "Parameters-ExampleSurveillanceInput.json",
     "fshName": "ExampleSurveillanceInput",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
     "startLine": 217,
     "endLine": 237
+  },
+  {
+    "outputFile": "Parameters-ExampleSurveillanceReferenceCase.json",
+    "fshName": "ExampleSurveillanceReferenceCase",
+    "fshType": "Instance",
+    "fshFile": "examples.fsh",
+    "startLine": 362,
+    "endLine": 386
   },
   {
     "outputFile": "StructureDefinition-ext-Dosage.CodedDirections.json",
@@ -172,8 +188,16 @@
     "fshName": "FhirHubSurveillanceInput",
     "fshType": "Profile",
     "fshFile": "profiles-surveillance.fsh",
-    "startLine": 31,
-    "endLine": 105
+    "startLine": 22,
+    "endLine": 102
+  },
+  {
+    "outputFile": "StructureDefinition-fhirhub-SurveillanceStatementInput.json",
+    "fshName": "FhirHubSurveillanceStatementInput",
+    "fshType": "Profile",
+    "fshFile": "profiles-surveillance.fsh",
+    "startLine": 119,
+    "endLine": 180
   },
   {
     "outputFile": "ValueSet-allergy-causative-agent.json",

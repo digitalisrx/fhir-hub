@@ -41,7 +41,8 @@ allergies, contra-indications and lab results, one release number.
   - [`POST /fhir/evs/$createrx-session`](#post-fhirevscreaterx-session)
   - [`GET /fhir/evs/$session-result`](#get-fhirevssession-result)
 - [**Surveillance**](#surveillance)
-  - [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication)
+  - [`POST /fhir/surveillance/$check-medication-request`](#post-fhirsurveillancecheck-medication-request)
+  - [`POST /fhir/surveillance/$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement)
 - [Lab determinations](#lab-determinations)
 - [Profiles](#profiles)
 - [Code systems](#code-systems)
@@ -201,7 +202,7 @@ to be true *inside* each parameter. Use the CapabilityStatement to confirm the o
 FHIR version, and this document for the payloads.
 
 **This statement describes the Prescriptor base only.** [Surveillance](#surveillance) is a separate
-contract and has its own, at `GET /fhir/surveillance/metadata`, which lists `check-medication` and
+contract and has its own, at `GET /fhir/surveillance/metadata`, which lists `check-medication-request` and
 nothing else. Both report the same `software.version`, because both come from one release of this
 guide.
 
@@ -551,7 +552,8 @@ Answers         a Bundle of DetectedIssue, one entry per signal
 
 | Operation | |
 | --- | --- |
-| [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication) | Weigh prescriptions against a patient's context |
+| [`POST /fhir/surveillance/$check-medication-request`](#post-fhirsurveillancecheck-medication-request) | Weigh proposed prescriptions against a patient's context |
+| [`POST /fhir/surveillance/$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement) | Weigh a patient's current medication against itself and their context |
 | `GET /fhir/surveillance/metadata` | The CapabilityStatement of this base. Unauthenticated |
 
 **What is behind it** is both halves of Dutch medication surveillance, in one call: the
@@ -565,7 +567,7 @@ from both merged into it.
 > get back is younger than that, no response profile is published for it, and the severity mapping
 > and the way a rule's text arrives may still move. Build against it, and agree with Digitalis how
 > you want to be told about a change before you go live. Three things it does not cover yet are
-> listed under [`$check-medication`](#post-fhirsurveillancecheck-medication).
+> listed under [`$check-medication-request`](#post-fhirsurveillancecheck-medication-request).
 
 **How it differs from Prescriptor**, beyond the base and the shape of the call:
 
@@ -581,26 +583,26 @@ and answers. The signals it reports are the ones Prescriptor already runs inside
 interactions, duplicate medication, allergy, contra-indication and dose signals, and the
 G-Standaard's medisch-farmaceutische beslisregels — with the difference that here they come back to
 you rather than being shown to a prescriber in Prescriptor's own screen. See
-[`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication).
+[`POST /fhir/surveillance/$check-medication-request`](#post-fhirsurveillancecheck-medication-request).
 
 ### Two bases, and what follows from it
 
 `/fhir/surveillance` is a **separate FHIR base**, not a path inside `/fhir/evs`. FHIR reserves the
 path space under a base for resource type names, so a second contract cannot be a segment within
-one: `/fhir/evs/surveillance/$check-medication` would parse as an operation on a resource type
+one: `/fhir/evs/surveillance/$check-medication-request` would parse as an operation on a resource type
 called `surveillance`, and there is no such type. Four consequences for you:
 
 - **Its own CapabilityStatement**, at `GET /fhir/surveillance/metadata`, unauthenticated like
-  [Prescriptor's](#get-fhirevsmetadata), listing `check-medication` and nothing else, and linking
+  [Prescriptor's](#get-fhirevsmetadata), listing `check-medication-request` and nothing else, and linking
   its generated `OperationDefinition` at
-  `/fhir/surveillance/OperationDefinition/-s-check-medication`.
+  `/fhir/surveillance/OperationDefinition/-s-check-medication-request`.
 - **The same credentials.** One `Authorization: Basic` header, the same practice id and licence key,
   the same 401s — see [Authentication](#authentication).
 - **One version number for both contracts.** There is one guide and one release, stamped on every
   artifact in it, so a release that only touches surveillance still moves the number
   `GET /fhir/evs/metadata` reports. Which contract a change belongs to is named in the changelog.
 - **A path in neither base is a 404**, from the container rather than a FHIR `OperationOutcome`.
-  `/fhir/$check-medication` and `/fhir/surveillance/$formulary-session` are both misses.
+  `/fhir/$check-medication-request` and `/fhir/surveillance/$formulary-session` are both misses.
 
 **What the two applications share** is not an accident and is most of the interface: the same
 credentials ([Authentication](#authentication)), the same content types and error shape
@@ -609,7 +611,7 @@ medication, allergies, contra-indications and lab results ([Profiles](#profiles)
 [Code systems](#code-systems) and the same [Lab determinations](#lab-determinations). A system that
 already opens Prescriptor sessions has no new payload to learn — only a new address to post to.
 
-## `POST /fhir/surveillance/$check-medication`
+## `POST /fhir/surveillance/$check-medication-request`
 
 The one operation of the [Surveillance](#surveillance) application: given a patient's context and
 one or more proposed prescriptions, which signals fire? No browser round trip and no session — one
@@ -624,7 +626,7 @@ it differs from [Prescriptor](#prescriptor).
 > than a dropped drug, and it is why this endpoint spent a release answering 501 rather than
 > "no issues found".
 
-### `$check-medication` input
+### `$check-medication-request` input
 
 A `Parameters` resource. The cardinalities below are enforced today; anything outside them is a 400
 that names the element.
@@ -634,7 +636,7 @@ that names the element.
 | `patient` | 1..1 | `Patient` | `gender` and `birthDate`, exactly as for a session |
 | `xisId` | 1..1 | `string` | Your system id, non-blank |
 | `xisVersion` | 1..1 | `string` | Your release version, non-blank |
-| `prescription` | 0..* | `MedicationRequest` | The prescriptions to check. **Repeatable here**, where a session takes one |
+| `prescription` | 1..* | `MedicationRequest` | The prescriptions to check. **Required**, and **repeatable here** where a session takes one |
 | `medicationStatement` | 0..* | `MedicationStatement` | The patient's current medication, in PRK or HPK |
 | `allergyIntolerance` | 0..* | `AllergyIntolerance` | `code.coding` in SSK, SNK or OGGrp |
 | `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
@@ -647,13 +649,21 @@ takes — so a prescription can be checked here and then handed to a session wit
 Everything the session pages say about each of them applies unchanged, including that an
 unresolvable drug code will fail the whole request rather than be skipped.
 
-**At least one `prescription` or one `medicationStatement` is required.** Not both — either. A
-request carrying neither has nothing to evaluate, and answering it would mean reporting "no
-signals" about a patient whose medication never arrived. This is the invariant
-`fhirhub-something-to-check`.
+**At least one `prescription` is required.** This operation weighs proposed prescriptions against
+a patient's context, so a request carrying none has nothing under test: answering it would mean
+reporting "no signals" about a check that never had a subject. A request without a `prescription`
+is a **400**, and that includes one carrying only `medicationStatement` — a shape that was accepted
+up to 0.3.0 and is not accepted here now. That question has its own operation:
+[`$check-medication-statement`](#post-fhirsurveillancecheck-medication-statement), which checks a
+patient's current medication with every entry under test. The changelog records both under 0.4.0.
 
 **`prescription` is repeatable** because a proposed regimen is weighed as a whole: two new drugs can
 interact with each other and with nothing the patient already takes.
+
+**`medicationStatement` is what the prescriptions are weighed against**, and it is optional only in
+the sense that the profile cannot know what a patient takes. Sending an incomplete list is the one
+error nothing downstream can detect: the answer will be about the list you sent, not about the
+patient.
 
 **There is no `endSessionUrl` and no `reason`.** Nothing is launched, so there is no browser to
 return; and the reason for encounter drives a formulary lookup rather than surveillance. Send either
@@ -694,7 +704,7 @@ NHG-coded form the dose check reads. Body surface is derived from the two upstre
 matters for any drug dosed per m².
 
 ```jsonc
-POST /fhir/surveillance/$check-medication
+POST /fhir/surveillance/$check-medication-request
 Content-Type: application/fhir+json
 Authorization: Basic ...
 
@@ -731,10 +741,15 @@ Authorization: Basic ...
 }
 ```
 
-Allergies, contra-indications and lab results are omitted from the example for length; they are
-identical to the session payloads.
+Allergies, contra-indications and lab results are omitted from the example above for length; they
+are identical to the session payloads. **A complete one is published as
+[`$check-medication-request` example, the reference case](Parameters-ExampleSurveillanceReferenceCase.html)**
+— metformine proposed for a pregnant patient with an eGFR of 35 who already takes ibuprofen and
+omeprazol, with two allergies and a contra-indication. It is the FHIR form of the request Digitalis
+documents as `example-1-req.xml`, so it can be read side by side with the signals that request
+produces, and the service is tested against it.
 
-### `$check-medication` output
+### `$check-medication-request` output
 
 A `Bundle` with `type: collection`, one `DetectedIssue` entry per signal, in the order the report
 listed them. `Bundle.identifier` carries the report id the clinical-rules service assigned, and
@@ -832,7 +847,7 @@ application behind this endpoint. Treat the endpoint as one to reach from your s
 from a client you do not control, and talk to Digitalis about the deployment restrictions in front
 of it.
 
-### `$check-medication` errors
+### `$check-medication-request` errors
 
 | Condition | Status |
 | --- | --- |
@@ -842,6 +857,143 @@ of it.
 
 The 500s all say so in `diagnostics`, and all of them say that no conclusion may be drawn about the
 patient's medication. There is no status in this contract that means "the check partly ran".
+
+## `POST /fhir/surveillance/$check-medication-statement`
+
+The [Surveillance](#surveillance) application's second operation, and the same question asked of a
+different subject: rather than weighing a proposal against a dossier, it weighs **a dossier against
+itself**. Every `medicationStatement` you send is examined — for allergy, for age, for dose, and
+against every other entry for duplicate medication — and the answer comes back in the same shape as
+[`$check-medication-request`](#post-fhirsurveillancecheck-medication-request).
+
+> **This is not `$check-medication-request` with the prescription left out.** It takes no
+> `prescription` at all, and one sent here is a **400** rather than an element quietly dropped. A
+> request whose proposed drug was ignored would be answered for the patient's existing medication
+> alone — a real answer to a question you did not ask, which is the worst of the three possible
+> outcomes.
+
+**What it is for.** A medication review, and anything else that asks "what is wrong with what this
+patient is already taking". The signals that only this operation can surface are the ones where
+nothing new is being prescribed:
+
+- an allergy or contra-indication **recorded after** the medication was started
+- a dose that no longer fits a **nierfunctie that has since dropped**, or a weight that has changed
+- a **duplicate** between two drugs of which neither is new
+- an age band the patient has since **crossed** — a drug that was fine at 74 and is a signal at 75
+
+### `$check-medication-statement` input
+
+Identical to the other operation's input in every respect except its medication parameters. The
+body is a `Parameters` resource conforming to
+[fhirhub-SurveillanceStatementInput](StructureDefinition-fhirhub-SurveillanceStatementInput.html).
+
+| Parameter | Card. | Type | Notes |
+| --- | --- | --- | --- |
+| `patient` | 1..1 | `Patient` | `gender` and `birthDate`, exactly as for a session |
+| `xisId` | 1..1 | `string` | Your system id, non-blank |
+| `xisVersion` | 1..1 | `string` | Your release version, non-blank |
+| `medicationStatement` | 1..* | `MedicationStatement` | **Required**, and every entry is under test |
+| `allergyIntolerance` | 0..* | `AllergyIntolerance` | `code.coding` in SSK, SNK or OGGrp |
+| `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
+| `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
+| ~~`prescription`~~ | — | — | **Not accepted.** Use [`$check-medication-request`](#post-fhirsurveillancecheck-medication-request) |
+
+**`medicationStatement` means something different here**, and it is the one thing to carry across
+from the other operation rather than assume. There, it is the *background*: the medication a
+proposal is weighed against. Here, every entry is a *subject*: it is itself checked, and it is
+compared with the others. Nothing is context, because the dossier is what is being examined.
+
+**Send the whole list.** The same warning as everywhere in this contract, and it bites harder here:
+the answer is about the list you sent, and an entry you left out is a drug that was not checked and
+not reported as unchecked. There is no way for anything downstream to detect the omission.
+
+**Everything else is unchanged** — the same resource profiles, the same G-Standaard code systems at
+PRK or HPK level, the same LOINC lab determinations with the same units, the same
+`Authorization: Basic` header, the same 400 on a drug code the G-Standaard cannot resolve. A host
+that can build a `$check-medication-request` body can build this one by dropping one parameter.
+
+```jsonc
+POST /fhir/surveillance/$check-medication-statement
+Content-Type: application/fhir+json
+Authorization: Basic ...
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    { "name": "patient", "resource": {
+        "resourceType": "Patient", "gender": "female", "birthDate": "1948-03-11" } },
+    { "name": "xisId", "valueString": "acme-his" },
+    { "name": "xisVersion", "valueString": "3.2.1" },
+    { "name": "medicationStatement", "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "ms-metformine",
+        "status": "active",
+        "subject": { "extension": [ { "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "unknown" } ] },
+        "medicationCodeableConcept": { "coding": [ {
+            "system": "http://spec.digitalis.nl/fhir/CodeSystem/gstandaard-prk",
+            "code": "49034", "display": "METFORMINE HCL TABLET 500MG" } ] },
+        "effectivePeriod": { "start": "2024-11-02" } } },
+    { "name": "medicationStatement", "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "ms-ibuprofen",
+        "status": "active",
+        "subject": { "extension": [ { "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason", "valueCode": "unknown" } ] },
+        "medicationCodeableConcept": { "coding": [ {
+            "system": "http://spec.digitalis.nl/fhir/CodeSystem/gstandaard-prk",
+            "code": "13692", "display": "IBUPROFEN TABLET 400MG" } ] },
+        "effectivePeriod": { "start": "2026-08-19" } } },
+    { "name": "observation", "resource": {
+        "resourceType": "Observation",
+        "id": "obs-egfr",
+        "status": "final",
+        "code": { "coding": [ { "system": "http://loinc.org", "code": "62238-1" } ] },
+        "effectiveDateTime": "2026-09-01T09:14:00",
+        "valueQuantity": { "value": 35, "system": "http://unitsofmeasure.org", "code": "mL/min/{1.73_m2}" } } }
+  ]
+}
+```
+
+A complete example is published as
+[`$check-medication-statement` example](Parameters-ExampleStatementCheck.html).
+
+### `$check-medication-statement` output
+
+**The same `Bundle` of `DetectedIssue`**, read exactly as described under
+[`$check-medication-request` output](#check-medication-request-output) — the severities, the
+`code.text`, the `detail`, the `evidence`, the `identifier` and the report id on `Bundle.identifier`
+all mean what they mean there. An empty `Bundle` means the same thing too, and means it under the
+same guarantee: the check ran and nothing fired, or you get a 500.
+
+**One difference, and it is in `implicated`.** A signal from this operation names your
+`MedicationStatement`:
+
+```jsonc
+"implicated": [ {
+  "type": "MedicationStatement",
+  "identifier": { "value": "ms-metformine" },
+  "display": "METFORMINE HCL TABLET 500MG"
+} ]
+```
+
+where the same signal from `$check-medication-request` would have named a `MedicationRequest`. Both
+carry your own resource `id` as the identifier, so set one — see
+[`$check-medication-request` output](#check-medication-request-output) for why that is what makes a
+signal placeable against a row.
+
+**The two gaps are the same two**, and both still apply: no PDD or DDD is sent, so dose rules that
+compare the two cannot fire; and nothing distinguishes a partial report from a complete one. See
+[What the answer does not cover yet](#what-the-answer-does-not-cover-yet).
+
+### `$check-medication-statement` errors
+
+| Condition | Status |
+| --- | --- |
+| Missing or malformed Basic credentials | 401 |
+| Body fails `fhirhub-SurveillanceStatementInput` — including a `prescription` parameter, which this operation does not define — or a G-Standaard code cannot be resolved | 400 |
+| The check could not be run — upstream unreachable, refused, or answered without a report | 500 |
+
+Same shapes, same `OperationOutcome`, and the same rule that no 500 permits a conclusion about the
+patient's medication.
 
 ## Lab determinations
 
@@ -932,6 +1084,8 @@ published as an implementation guide with the canonical `http://spec.digitalis.n
 | `$createrx-session` request | `fhirhub-CreateRxSessionInput` |
 | Session response | `fhirhub-SessionOutput` |
 | `$session-result` response | `fhirhub-ResultBundle` |
+| `$check-medication-request` request | `fhirhub-SurveillanceInput` |
+| `$check-medication-statement` request | `fhirhub-SurveillanceStatementInput` |
 
 The input profiles slice `Parameters.parameter` by name and point each slice at a resource
 profile, so validating the request body checks the resources inside it in one pass. **The slicing
@@ -1203,6 +1357,6 @@ not in the running service.
   mapping and the way a rule's text arrives may still move. Three classes of rule cannot fire yet —
   the PDD-against-DDD dose comparison, anything needing a weight, and nothing tells a partial
   answer from a complete one. See
-  [`POST /fhir/surveillance/$check-medication`](#post-fhirsurveillancecheck-medication).
+  [`POST /fhir/surveillance/$check-medication-request`](#post-fhirsurveillancecheck-medication-request).
 
 Questions, or a case this document does not cover: contact Digitalis.

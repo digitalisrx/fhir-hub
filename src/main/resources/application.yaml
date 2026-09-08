@@ -20,7 +20,7 @@ prescriptor:
   read-timeout: 30s
 
 hub:
-  # The Digitalis Hub's SOAP endpoint, which serves /fhir/surveillance/$check-medication. The
+  # The Digitalis Hub's SOAP endpoint, which serves /fhir/surveillance/$check-medication-request. The
   # trailing slash is not decoration: the service is mounted at call/ and a request without it
   # is redirected.
   target-url: ${HUB_TARGET_URL:https://hub.digitalis.nl/call/}

@@ -1,0 +1,163 @@
+{
+  "resourceType": "Parameters",
+  "id": "ExampleStatementCheck",
+  "meta": {
+    "profile": [
+      "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput"
+    ]
+  },
+  "parameter": [
+    {
+      "name": "patient",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ExamplePatient",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-Patient"
+          ]
+        },
+        "gender": "female",
+        "birthDate": "1980-01-01"
+      }
+    },
+    {
+      "name": "xisId",
+      "valueString": "xis-001"
+    },
+    {
+      "name": "xisVersion",
+      "valueString": "1.0"
+    },
+    {
+      "name": "medicationStatement",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "ms-metformine",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-MedicationStatement"
+          ]
+        },
+        "status": "active",
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+              "code": "1090",
+              "display": "METFORMINE TABLET   500MG"
+            }
+          ]
+        },
+        "effectivePeriod": {
+          "start": "2024-11-02"
+        }
+      }
+    },
+    {
+      "name": "medicationStatement",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "ms-ibuprofen",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-MedicationStatement"
+          ]
+        },
+        "status": "active",
+        "subject": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.10",
+              "code": "27278",
+              "display": "IBUPROFEN TABLET 400MG"
+            }
+          ]
+        },
+        "effectivePeriod": {
+          "start": "2026-08-19"
+        }
+      }
+    },
+    {
+      "name": "allergyIntolerance",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "ExampleAllergy",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-AllergyIntolerance"
+          ]
+        },
+        "patient": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "code": "active",
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "urn:oid:2.16.840.1.113883.2.4.4.1.750",
+              "code": "10499"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "observation",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ExampleLabResult",
+        "meta": {
+          "profile": [
+            "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-LabObservation"
+          ]
+        },
+        "valueQuantity": {
+          "system": "http://unitsofmeasure.org",
+          "value": 65,
+          "unit": "mL/min/1.73m2",
+          "code": "mL/min/{1.73_m2}"
+        },
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "62238-1"
+            }
+          ]
+        },
+        "effectiveDateTime": "2024-07-04"
+      }
+    }
+  ]
+}

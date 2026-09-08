@@ -2,7 +2,7 @@
   "resourceType": "StructureDefinition",
   "id": "fhirhub-CreateRxSessionInput",
   "url": "http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-CreateRxSessionInput",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "FhirHubCreateRxSessionInput",
   "title": "$createrx-session input",
   "status": "draft",

@@ -9,9 +9,9 @@ id: nl.digitalis.fhirhub
 canonical: http://spec.digitalis.nl/fhir
 name: DigitalisFhirHub
 title: "Digitalis fhir-hub Implementation Guide"
-description: "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication request contract is published but not yet implemented."
+description: "FHIR R4 conformance artifacts for the Digitalis FHIR interface: two contracts on two FHIR bases — Prescriptor, the prescribing sessions of $formulary-session, $createrx-session and $session-result, and Surveillance, whose $check-medication-request weighs proposed prescriptions against a patient's dossier and whose $check-medication-statement weighs the dossier itself, both answering with the signals that fire."
 status: draft
-version: 0.3.0
+version: 0.4.0
 fhirVersion: 4.0.1
 copyrightYear: 2026+
 releaseLabel: Draft
@@ -58,8 +58,10 @@ pages:
     title: GET /fhir/evs/$session-result
   surveillance.md:
     title: Surveillance
-  check-medication.md:
-    title: POST /fhir/surveillance/$check-medication
+  check-medication-request.md:
+    title: POST /fhir/surveillance/$check-medication-request
+  check-medication-statement.md:
+    title: POST /fhir/surveillance/$check-medication-statement
   profiles.md:
     title: Profiles
   code-systems.md:
@@ -104,7 +106,8 @@ menu:
     GET /fhir/evs/$session-result: session-result.html
   Surveillance (preview):
     What it is: surveillance.html
-    POST /fhir/surveillance/$check-medication: check-medication.html
+    POST /fhir/surveillance/$check-medication-request: check-medication-request.html
+    POST /fhir/surveillance/$check-medication-statement: check-medication-statement.html
   Payloads:
     Profiles: profiles.html
     Code systems: code-systems.html

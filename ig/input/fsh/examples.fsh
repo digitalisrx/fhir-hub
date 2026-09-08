@@ -206,9 +206,9 @@ Description: "A CreateRx session opened on a prescription the host already holds
 * parameter[prescription].resource = ExamplePrescriptionInput
 
 // ---------------------------------------------------------------------------
-// The surveillance contract, on its own base. The operation is NOT implemented — a request
-// shaped exactly like this one is answered with 501 — so this example is what a host builds
-// and validates against today, and nothing more. See profiles-surveillance.fsh.
+// The surveillance contract, on its own base. Two examples: a short one that matches the payload
+// in the guide's prose, and the reference case below it, which is the FHIR form of the request
+// Digitalis documents as example-1-req.xml. See profiles-surveillance.fsh.
 //
 // Every resource in it is reused unchanged from the session examples above, which is the point:
 // a host that already opens sessions has no new payload to shape, only a new address to post to.
@@ -217,8 +217,8 @@ Description: "A CreateRx session opened on a prescription the host already holds
 Instance: ExampleSurveillanceInput
 InstanceOf: FhirHubSurveillanceInput
 Usage: #example
-Title: "$check-medication request"
-Description: "One proposed prescription weighed against a patient's current medication, allergy, contra-indication and lab result. NOT IMPLEMENTED: a request like this is answered with 501."
+Title: "$check-medication-request example"
+Description: "One proposed prescription weighed against a patient's current medication, allergy, contra-indication and lab result."
 * parameter[patient].name = "patient"
 * parameter[patient].resource = ExamplePatient
 * parameter[xisId].name = "xisId"
@@ -233,5 +233,209 @@ Description: "One proposed prescription weighed against a patient's current medi
 * parameter[allergyIntolerance][0].resource = ExampleAllergy
 * parameter[condition][0].name = "condition"
 * parameter[condition][0].resource = ExampleContraIndication
+* parameter[observation][0].name = "observation"
+* parameter[observation][0].resource = ExampleLabResult
+
+// ---------------------------------------------------------------------------
+// The reference case: the FHIR form of DigitalisRx-documentation/example-1-req.xml, the request
+// Digitalis documents alongside the response it produces. Metformine proposed for a pregnant
+// 19-year-old with an eGFR of 35 who already takes ibuprofen and omeprazol.
+//
+// It is here rather than only in that folder so the build checks it: SUSHI validates nothing, and
+// IgExampleConformanceTest is what stops an example contradicting its profile. What it produces on
+// the wire is pinned separately, by SurveillanceIntegrationTest.postsTheReferenceCaseAsDocumented,
+// which sends this instance and compares the DigitalisRx that comes out with the documented one.
+//
+// Every id is the UID from that document, because an id is what comes back on
+// DetectedIssue.implicated — 9064 is the metformine the signals are about.
+
+Instance: ReferencePatient
+InstanceOf: FhirHubPatient
+Usage: #inline
+* gender = #female
+* birthDate = "2007-09-07"
+
+Instance: ReferenceAllergyPenicillines
+InstanceOf: FhirHubAllergyIntolerance
+Usage: #inline
+* id = "5469"
+* patient.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* patient.extension[0].valueCode = #unknown
+* clinicalStatus = http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical#active
+// Thesaurus 122, an ongewenste groep — the only allergy form a beslisregel can test.
+* code.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.1.902.122"
+* code.coding[0].code = #35
+// Your own wording, and not decoration: the surveillance upstream writes it into the title and
+// the body of the signal it raises.
+* code.coding[0].display = "PENICILLINES"
+
+Instance: ReferenceAllergyTalk
+InstanceOf: FhirHubAllergyIntolerance
+Usage: #inline
+* id = "5470"
+* patient.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* patient.extension[0].valueCode = #unknown
+* clinicalStatus = http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical#active
+* code.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.1.750"
+* code.coding[0].code = #10499
+* code.coding[0].display = "TALK"
+
+Instance: ReferencePregnancy
+InstanceOf: FhirHubCondition
+Usage: #inline
+* id = "5468"
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* code.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.1.902.40"
+* code.coding[0].code = #1320
+* code.coding[0].display = "ZWANGERSCHAP"
+
+Instance: ReferenceMetformine
+InstanceOf: FhirHubPrescriptionInput
+Usage: #inline
+* id = "9064"
+* status = #active
+* intent = #order
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* medicationCodeableConcept.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* medicationCodeableConcept.coding[0].code = #1090
+* medicationCodeableConcept.coding[0].display = "METFORMINE TABLET   500MG"
+* medicationCodeableConcept.coding[1].system = "http://www.whocc.no/atc"
+* medicationCodeableConcept.coding[1].code = #A10BA02
+* dosageInstruction[0].extension[0].url = "http://spec.digitalis.nl/fhir/StructureDefinition/ext-Dosage.CodedDirections"
+* dosageInstruction[0].extension[0].valueString = "1D1T"
+* dosageInstruction[0].text = "1 X per dag 1 tablet"
+* dispenseRequest.quantity.value = 20
+* dispenseRequest.quantity.system = "urn:oid:2.16.840.1.113883.2.4.4.1.900.2"
+* dispenseRequest.quantity.code = #ST
+// When the prescription runs. Both engines filter the dossier on the start date.
+* dispenseRequest.validityPeriod.start = "2026-09-06"
+* dispenseRequest.validityPeriod.end = "2026-09-26"
+// The indication, which is what makes a dose check indication-specific: K86 is hypertensie
+// zonder orgaanbeschadiging in ICPC-1 NL, and it is the reason recorded in the reference document.
+* reasonCode[0].coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.31.1"
+* reasonCode[0].coding[0].code = #K86
+
+Instance: ReferenceIbuprofen
+InstanceOf: FhirHubMedicationStatement
+Usage: #inline
+* id = "9065"
+* status = #active
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* medicationCodeableConcept.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* medicationCodeableConcept.coding[0].code = #27278
+* medicationCodeableConcept.coding[0].display = "IBUPROFEN TABLET 400MG"
+* effectivePeriod.start = "2026-09-06"
+* effectivePeriod.end = "2026-09-11"
+
+Instance: ReferenceOmeprazol
+InstanceOf: FhirHubMedicationStatement
+Usage: #inline
+* id = "9066"
+* status = #active
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* medicationCodeableConcept.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* medicationCodeableConcept.coding[0].code = #60062
+* medicationCodeableConcept.coding[0].display = "OMEPRAZOL CAPSULE MSR 20MG"
+* effectivePeriod.start = "2026-09-06"
+* effectivePeriod.end = "2026-09-13"
+
+Instance: ReferenceEgfr
+InstanceOf: FhirHubLabObservation
+Usage: #inline
+* id = "1667"
+* status = #final
+* code.coding[0].system = "http://loinc.org"
+* code.coding[0].code = #62238-1
+// No display: LOINC is distributed, so a display that is not LOINC's own Dutch term is a
+// validation error rather than a warning. The interface supplies the caption instead.
+// The time of day is stated, because the most recent result of a determination is the one
+// evaluated and results carrying a date alone are equally recent.
+* effectiveDateTime = "2026-09-06T09:05:11+02:00"
+* valueQuantity.value = 35
+* valueQuantity.system = "http://unitsofmeasure.org"
+* valueQuantity.code = #mL/min/{1.73_m2}
+
+Instance: ExampleSurveillanceReferenceCase
+InstanceOf: FhirHubSurveillanceInput
+Usage: #example
+Title: "$check-medication-request example, the reference case"
+Description: "The FHIR form of the request Digitalis documents as example-1-req.xml: metformine proposed for a pregnant patient with an eGFR of 35 who already takes ibuprofen and omeprazol. It is the payload behind the three beslisregel signals in that document's response, and it also raises the classic allergy and dose-control signals."
+* parameter[patient].name = "patient"
+* parameter[patient].resource = ReferencePatient
+* parameter[xisId].name = "xisId"
+* parameter[xisId].valueString = "xis-001"
+* parameter[xisVersion].name = "xisVersion"
+* parameter[xisVersion].valueString = "1.0"
+* parameter[prescription][0].name = "prescription"
+* parameter[prescription][0].resource = ReferenceMetformine
+* parameter[medicationStatement][0].name = "medicationStatement"
+* parameter[medicationStatement][0].resource = ReferenceIbuprofen
+* parameter[medicationStatement][1].name = "medicationStatement"
+* parameter[medicationStatement][1].resource = ReferenceOmeprazol
+* parameter[allergyIntolerance][0].name = "allergyIntolerance"
+* parameter[allergyIntolerance][0].resource = ReferenceAllergyPenicillines
+* parameter[allergyIntolerance][1].name = "allergyIntolerance"
+* parameter[allergyIntolerance][1].resource = ReferenceAllergyTalk
+* parameter[condition][0].name = "condition"
+* parameter[condition][0].resource = ReferencePregnancy
+* parameter[observation][0].name = "observation"
+* parameter[observation][0].resource = ReferenceEgfr
+
+// ---------------------------------------------------------------------------
+// The dossier check, added with $check-medication-statement at 0.4.0. Two drugs a patient is
+// already taking, checked against each other and against a nierfunctie that has since dropped —
+// which is the class of signal no proposal-shaped request can ask for, because nothing is being
+// proposed.
+//
+// Both entries carry an `id`, and that is the part worth copying: every entry of this list goes
+// upstream as medication under test, so every signal comes back on DetectedIssue.implicated naming
+// a MedicationStatement by the id you gave it. Without one a host gets a positional identifier and
+// has to match on codes.
+
+Instance: StatementCheckMetformine
+InstanceOf: FhirHubMedicationStatement
+Usage: #inline
+* id = "ms-metformine"
+* status = #active
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* medicationCodeableConcept.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* medicationCodeableConcept.coding[0].code = #1090
+* medicationCodeableConcept.coding[0].display = "METFORMINE TABLET   500MG"
+* effectivePeriod.start = "2024-11-02"
+
+Instance: StatementCheckIbuprofen
+InstanceOf: FhirHubMedicationStatement
+Usage: #inline
+* id = "ms-ibuprofen"
+* status = #active
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
+* medicationCodeableConcept.coding[0].system = "urn:oid:2.16.840.1.113883.2.4.4.10"
+* medicationCodeableConcept.coding[0].code = #27278
+* medicationCodeableConcept.coding[0].display = "IBUPROFEN TABLET 400MG"
+* effectivePeriod.start = "2026-08-19"
+
+Instance: ExampleStatementCheck
+InstanceOf: FhirHubSurveillanceStatementInput
+Usage: #example
+Title: "$check-medication-statement example"
+Description: "A patient's current medication checked against itself and their context: two drugs, an allergy and an eGFR of 35, with no prescription proposed. Note that there is no prescription parameter — this profile does not define one."
+* parameter[patient].name = "patient"
+* parameter[patient].resource = ExamplePatient
+* parameter[xisId].name = "xisId"
+* parameter[xisId].valueString = "xis-001"
+* parameter[xisVersion].name = "xisVersion"
+* parameter[xisVersion].valueString = "1.0"
+* parameter[medicationStatement][0].name = "medicationStatement"
+* parameter[medicationStatement][0].resource = StatementCheckMetformine
+* parameter[medicationStatement][1].name = "medicationStatement"
+* parameter[medicationStatement][1].resource = StatementCheckIbuprofen
+* parameter[allergyIntolerance][0].name = "allergyIntolerance"
+* parameter[allergyIntolerance][0].resource = ExampleAllergy
 * parameter[observation][0].name = "observation"
 * parameter[observation][0].resource = ExampleLabResult

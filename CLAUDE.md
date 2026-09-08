@@ -11,7 +11,8 @@ One FHIR R4 interface in front of **two applications**, on two FHIR bases.
 Stateless proxy: FHIR in, XML-RPC to Prescriptor, FHIR out. No session store. It does read the
 G-Standaard database, read-only, to resolve current medication for medication surveillance.
 
-**Surveillance**, at `/fhir/surveillance`, answers `$check-medication`: FHIR in, a `DigitalisRx`
+**Surveillance**, at `/fhir/surveillance`, answers `$check-medication-request` and
+`$check-medication-statement`: FHIR in, a `DigitalisRx`
 document over SOAP to the **Digitalis Hub** (`../hub`), a `Bundle` of `DetectedIssue` out. It runs
 both halves of Dutch medication surveillance — the G-Standaard's medisch-farmaceutische
 beslisregels through the clinical-rules engine, and the classic allergy, age, duplicate-medication
@@ -25,7 +26,7 @@ and the open items. This file covers what the README does not: why the code is s
 ## Commands
 
 ```bash
-mvn test                 # 170 tests; no network and no database — WireMock stubs
+mvn test                 # 186 tests; no network and no database — WireMock stubs
                          # Prescriptor and the Hub, H2 stands in for the medcode view
 mvn spring-boot:run
 mvn -o test -Dtest=X     # single test class
@@ -84,7 +85,9 @@ HTTP  →  BasicAuthenticationFilter              practiceId + licenseKey off th
 
   /fhir/surveillance
       →  fhir/SurveillanceParametersMapper       Parameters       → internal model
-                                                  (proposals vs dossier, dosing, dates)
+                                                  (proposals vs dossier, dosing, dates;
+                                                   the statement check puts the whole
+                                                   dossier under test)
       →  gstandaard/MedicationCodeResolver       PRK|HPK          → PRK+GPK(+HPK)+ATC via JDBC
       →  hub/MedicationSurveillanceRequestBuilder  internal model → SOAP + DigitalisRx
       →  hub/HubClient                           the only HTTP call out to the Hub
@@ -111,7 +114,7 @@ whether a check happens* below.
 ## Things worth knowing before you change something
 
 **The second base, and what decides whether a check happens.**
-`POST /fhir/surveillance/$check-medication` asks the medication-surveillance question directly:
+`POST /fhir/surveillance/$check-medication-request` asks the medication-surveillance question directly:
 patient dossier and proposed prescriptions in, a `Bundle` of `DetectedIssue` out. The upstream is
 the **Digitalis Hub** (`../hub`, a Django/spyne SOAP service), which runs the clinical-rules engine
 for the G-Standaard's beslisregels and then its own G-Standaard checks — allergy, age, duplicate
@@ -198,7 +201,7 @@ it is a product or deployment decision, and the property worth protecting is tha
 holds no credential store.
 
 **A second base, not a segment under `/fhir/evs`.** FHIR reserves the path space under a base for
-resource type names, so `/fhir/evs/surveillance/$check-medication` parses as an operation on a
+resource type names, so `/fhir/evs/surveillance/$check-medication-request` parses as an operation on a
 resource type called `surveillance`. `FhirConfig.EVS_BASE` records this; a third contract goes the
 same way.
 
@@ -522,6 +525,38 @@ the session with a 400 instead of being dropped from the list. Surveillance over
 list answers "no interaction found" — a false negative a prescriber cannot distinguish from a
 genuine all-clear. Do not soften this into a warning without a clinical decision behind it.
 
+**`prescription` is `1..*` on `$check-medication-request`, and the invariant it replaced is gone.**
+Up to 0.3.0 the slice was `0..*` and `fhirhub-something-to-check` accepted *either* a prescription
+or a current-medication entry, so a dossier-only request was checked for interactions among what
+the patient already takes. 0.4.0 made a prescription mandatory, which makes that invariant
+unfireable — it was removed rather than left to assert something false. Two consequences worth
+knowing before widening it back: the profile is what rejects an empty check
+(`ProfileValidator` fires before the mapper, and `SurveillanceParametersMapper` keeps the same rule
+for a deployment with validation off), and the dossier-only capability was not dropped but
+moved — `$check-medication-statement` is where it lives now, so widening this slice back would give
+the same question two answers with different subjects.
+`SurveillanceIntegrationTest.refusesARequestCarryingOnlyCurrentMedication` pins the refusal.
+
+**`$check-medication-statement` marks the whole dossier as pending, and that is the operation.**
+It maps every `medicationStatement` into `SurveillanceRequest.proposed`, which reads like a misuse
+of the field and is the mechanism: `proposed` is what `MedicationSurveillanceRequestBuilder` marks
+`pending="true"` and `trigger="true"`, and the Hub gates *every* one of its G-Standaard checks on at
+least one drug carrying `pending` — `MbFactory.process()` returns immediately otherwise, with a
+complete-looking empty report. So sending that list as the standing dossier instead would answer 200
+with no findings for a check that never ran, which is exactly the false negative the rest of this
+section is about. `currentMedication` is left empty because the dossier is the subject, not the
+context.
+
+Two more things about it. The rules engine is the half that does *not* need the marking: `trigger`
+only narrows a rule's drug match when the root attribute `filterOnTriggerMeds` is set, it defaults
+to false and this interface does not send it (`TCREDrugList.DrugsHaveMatchWithMPD`), so the
+beslisregels see the whole list either way — it is the classic G-Standaard checks that would fall
+silent. And the response cannot say which resource a drug came from, because the report echoes back
+the same `pending`/`trigger` marking whichever operation asked: `SurveillanceBundleMapper.DrugsUnderTest`
+is how the operation tells the mapper whether `DetectedIssue.implicated` should name a
+`MedicationRequest` or a `MedicationStatement`, and it has no default because a wrong one hands a
+host a reference to a resource type it never sent.
+
 **Authentication is a servlet filter, and Spring Security was removed on purpose.** What this
 interface authenticates is "is there a well-formed practice id and license key on the request" —
 Prescriptor holds the licence administration and is the authority on whether they are a real pair,
@@ -723,7 +758,7 @@ Three tests guard claims the rest of the build cannot see, and all three look de
   the version in an `OperationOutcome` quietly disappears. See *The published specification*
   above.
 - `OutboundPayloadConformanceTest.theSurveillanceBundleIsValidFhir` validates the response of
-  `$check-medication` against base R4 and against no profile, because none is published for it.
+  `$check-medication-request` against base R4 and against no profile, because none is published for it.
   That is weaker than the check beside it and still the only thing standing between a
   `DetectedIssue` missing a mandatory element and a host's parser.
 

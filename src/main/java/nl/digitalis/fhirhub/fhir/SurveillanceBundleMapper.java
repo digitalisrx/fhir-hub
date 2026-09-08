@@ -24,7 +24,7 @@ import nl.digitalis.fhirhub.model.SurveillanceFinding;
 import nl.digitalis.fhirhub.model.SurveillanceReport;
 
 /**
- * Maps a clinical-rules report onto the Bundle {@code $check-medication} returns: one
+ * Maps a clinical-rules report onto the Bundle {@code $check-medication-request} returns: one
  * {@code DetectedIssue} per signal, in the order the report listed them.
  *
  * <p><strong>An empty Bundle means no signal fired</strong>, and it can only be reached by a
@@ -48,7 +48,37 @@ public class SurveillanceBundleMapper {
 		this.codeSystems = codeSystems;
 	}
 
-	public Bundle toBundle(SurveillanceReport report) {
+	/**
+	 * What the host's own resource was for the drugs this check had under test.
+	 *
+	 * <p>The report echoes those drugs back marked {@code pending}/{@code trigger}, so
+	 * {@code MedicationSurveillanceResponseParser} reports them as
+	 * {@link FindingContext.Kind#PROPOSED_DRUG} whichever operation asked — the marking is how the
+	 * upstream is told what to examine and carries no news about which FHIR resource the host sent.
+	 * Only the operation knows that, so it says: {@code $check-medication-request} put
+	 * {@code MedicationRequest}s under test and {@code $check-medication-statement} put
+	 * {@code MedicationStatement}s. Getting it wrong points every signal at a resource type the
+	 * host never sent, which is a reference it cannot resolve rather than a visible error — hence
+	 * no default.
+	 */
+	public enum DrugsUnderTest {
+
+		MEDICATION_REQUEST("MedicationRequest"),
+
+		MEDICATION_STATEMENT("MedicationStatement");
+
+		private final String resourceType;
+
+		DrugsUnderTest(String resourceType) {
+			this.resourceType = resourceType;
+		}
+
+		String resourceType() {
+			return resourceType;
+		}
+	}
+
+	public Bundle toBundle(SurveillanceReport report, DrugsUnderTest underTest) {
 		Bundle bundle = new Bundle();
 		bundle.setType(BundleType.COLLECTION);
 
@@ -69,13 +99,14 @@ public class SurveillanceBundleMapper {
 					// exactly that, and it identifies the entry within this Bundle and nowhere
 					// else — the stable handle is DetectedIssue.identifier, which is the rule.
 					.setFullUrl("urn:uuid:" + UUID.randomUUID())
-					.setResource(toDetectedIssue(finding, report));
+					.setResource(toDetectedIssue(finding, report, underTest));
 		}
 
 		return bundle;
 	}
 
-	private DetectedIssue toDetectedIssue(SurveillanceFinding finding, SurveillanceReport report) {
+	private DetectedIssue toDetectedIssue(SurveillanceFinding finding, SurveillanceReport report,
+			DrugsUnderTest underTest) {
 		DetectedIssue issue = new DetectedIssue();
 		issue.setStatus(DetectedIssueStatus.FINAL);
 
@@ -102,7 +133,7 @@ public class SurveillanceBundleMapper {
 
 		for (FindingContext context : finding.context()) {
 			evidence(issue, context);
-			implicated(issue, context);
+			implicated(issue, context, underTest);
 		}
 
 		return issue;
@@ -181,13 +212,15 @@ public class SurveillanceBundleMapper {
 	 * risk" — the medication, in other words — and the rest is evidence rather than the subject of
 	 * the finding.
 	 */
-	private void implicated(DetectedIssue issue, FindingContext context) {
+	private void implicated(DetectedIssue issue, FindingContext context, DrugsUnderTest underTest) {
 		if (context.uid() == null) {
 			return;
 		}
 
+		// A drug that was under test is whatever resource the operation took; one that was context
+		// is always a MedicationStatement, because that is the only parameter a dossier arrives in.
 		String type = switch (context.kind()) {
-			case PROPOSED_DRUG -> "MedicationRequest";
+			case PROPOSED_DRUG -> underTest.resourceType();
 			case CURRENT_DRUG -> "MedicationStatement";
 			default -> null;
 		};

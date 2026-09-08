@@ -76,7 +76,8 @@ class OutboundPayloadConformanceTest {
 	void theSurveillanceBundleIsValidFhir() {
 		Bundle bundle = surveillanceMapper.toBundle(
 				new MedicationSurveillanceResponseParser().parse(
-						Fixtures.hubXml("medication-surveillance-response.xml")));
+						Fixtures.hubXml("medication-surveillance-response.xml")),
+				SurveillanceBundleMapper.DrugsUnderTest.MEDICATION_REQUEST);
 
 		assertThat(errorsIn(bundle, null)).isEmpty();
 	}

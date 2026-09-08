@@ -11,7 +11,7 @@ import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.StringType;
 
 /**
- * The inbound parameters of {@code $check-medication}, as HAPI destructured them.
+ * The inbound parameters of {@code $check-medication-request}, as HAPI destructured them.
  *
  * <p>The sibling of {@link SessionInputs}, and shaped by the same constraint: every parameter is
  * bound individually so that HAPI can generate an {@code OperationDefinition} carrying every
@@ -21,7 +21,8 @@ import org.hl7.fhir.r4.model.StringType;
  *
  * <p>{@code prescription} is a list here where a session takes one, because a proposed regimen is
  * weighed as a whole: two new drugs can interact with each other and with nothing the patient
- * already takes.
+ * already takes. It is also <strong>mandatory</strong> — at least one prescription is what this
+ * operation weighs, and a request carrying none has nothing under test.
  */
 public record SurveillanceInputs(
 		Patient patient,

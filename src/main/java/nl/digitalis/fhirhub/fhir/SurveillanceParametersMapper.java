@@ -25,7 +25,7 @@ import nl.digitalis.fhirhub.model.SurveillanceRequest;
 import nl.digitalis.fhirhub.prescriptor.CodeSystemTokens;
 
 /**
- * Maps the inbound {@code Parameters} of {@code $check-medication} onto the internal request
+ * Maps the inbound {@code Parameters} of {@code $check-medication-request} onto the internal request
  * model.
  *
  * <p>The patient's dossier is {@link ClinicalContextMapper}'s, shared with the session contract.
@@ -73,14 +73,15 @@ public class SurveillanceParametersMapper {
 					"Parameters.parameter:" + PARAM_PATIENT + " is required and must be a Patient");
 		}
 
-		// The profile invariant fhirhub-something-to-check says this too, and says it better,
-		// naming the invariant. This is the same rule for a deployment with validation switched
-		// off: a check over nothing reports no signals, which reads as an all-clear.
-		if (inputs.prescription().isEmpty() && inputs.medicationStatement().isEmpty()) {
+		// The profile says this too, as a 1..* on the slice, and says it better: it names the
+		// element. This is the same rule for a deployment with validation switched off — a check
+		// with nothing under test reports no signals, which reads as an all-clear. Note that a
+		// dossier-only request was accepted until 0.4.0; it is a 400 now.
+		if (inputs.prescription().isEmpty()) {
 			throw new InvalidRequestException(
-					"Send at least one " + PARAM_PRESCRIPTION + " to check, or at least one "
-							+ PARAM_MEDICATION + " to check for interactions among: a request carrying"
-							+ " neither has nothing to evaluate.");
+					"Send at least one " + PARAM_PRESCRIPTION + " to check: this operation weighs"
+							+ " proposed prescriptions against the patient's context, so a request"
+							+ " carrying none has nothing under test.");
 		}
 
 		List<CodedItem> conditions = context.conditions(inputs.condition());
@@ -94,6 +95,54 @@ public class SurveillanceParametersMapper {
 				codedWith(conditions, CodeSystemTokens.ICPC),
 				proposals(inputs.prescription(), today),
 				currentMedication(inputs.medicationStatement(), today),
+				context.laboratoryData(inputs.observation()));
+	}
+
+	/**
+	 * The same question asked of a dossier alone: every {@code medicationStatement} is a subject of
+	 * the check rather than the background to a proposal.
+	 *
+	 * <p>The list goes into {@link SurveillanceRequest#proposed()}, which is not a misuse of the
+	 * field but the whole mechanism: {@code proposed} is what
+	 * {@code MedicationSurveillanceRequestBuilder} marks {@code pending="true"} and
+	 * {@code trigger="true"}, and the Hub gates every one of its G-Standaard checks on at least one
+	 * drug carrying {@code pending} — {@code MbFactory.process()} returns immediately otherwise. So
+	 * sending this list as the standing dossier instead would produce a well-formed 200 with an
+	 * empty {@code Bundle} for a check that never ran, which is the one answer this contract must
+	 * never give. {@code currentMedication} is left empty because there is no separate context
+	 * here: the dossier is the subject.
+	 */
+	public SurveillanceRequest toStatementCheckRequest(StatementCheckInputs inputs, LocalDate today) {
+		if (inputs == null) {
+			throw new InvalidRequestException("A Parameters resource is required");
+		}
+
+		Patient patient = inputs.patient();
+		if (patient == null) {
+			throw new InvalidRequestException(
+					"Parameters.parameter:" + PARAM_PATIENT + " is required and must be a Patient");
+		}
+
+		// The profile says this too, as a 1..* on the slice. Same rule as the mandatory
+		// prescription on the other operation, and for the same reason.
+		if (inputs.medicationStatement().isEmpty()) {
+			throw new InvalidRequestException(
+					"Send at least one " + PARAM_MEDICATION + " to check: this operation weighs a"
+							+ " patient's current medication against itself and their context, so a"
+							+ " request carrying none has nothing under test.");
+		}
+
+		List<CodedItem> conditions = context.conditions(inputs.condition());
+
+		return new SurveillanceRequest(
+				context.xis(inputs.xisId(), inputs.xisVersion(), PARAM_XIS_ID, PARAM_XIS_VERSION),
+				context.gender(patient),
+				context.birthDate(patient),
+				context.allergies(inputs.allergyIntolerance()),
+				codedWith(conditions, CodeSystemTokens.CI_CODE),
+				codedWith(conditions, CodeSystemTokens.ICPC),
+				currentMedication(inputs.medicationStatement(), today),
+				List.of(),
 				context.laboratoryData(inputs.observation()));
 	}
 

@@ -34,15 +34,21 @@ public final class Profiles {
 			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-ResultBundle";
 
 	/**
-	 * The request profile of {@code $check-medication}, on the surveillance base.
-	 *
-	 * <p>Enforced even though the operation behind it is not implemented: a well-formed body gets
-	 * a 501 and a malformed one still gets a 400 naming what is wrong with it, so an integrator
-	 * can build and test the payload against the same rules that will apply when the check goes
-	 * live. There is deliberately no response profile yet — see {@code SurveillanceOperationProvider}.
+	 * The request profile of {@code $check-medication-request}, on the surveillance base. It was
+	 * published and enforced for a release before the operation behind it was implemented, so that
+	 * an integrator could build a payload against the rules that would apply once the check went
+	 * live. There is deliberately no response profile — see {@code SurveillanceOperationProvider}.
 	 */
 	public static final String SURVEILLANCE_INPUT =
 			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceInput";
+
+	/**
+	 * The request profile of {@code $check-medication-statement}: the same context, a mandatory
+	 * medication list, and no {@code prescription} slice at all. The absence is enforced rather
+	 * than documented — the slicing is closed, so a {@code MedicationRequest} sent here is a 400.
+	 */
+	public static final String SURVEILLANCE_STATEMENT_INPUT =
+			"http://spec.digitalis.nl/fhir/StructureDefinition/fhirhub-SurveillanceStatementInput";
 
 	private Profiles() {
 	}
