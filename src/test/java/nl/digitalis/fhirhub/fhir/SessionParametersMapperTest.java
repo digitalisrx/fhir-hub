@@ -208,11 +208,18 @@ class SessionParametersMapperTest {
 				.hasMessageContaining("mL/min/{1.73_m2}");
 	}
 
-	/** Metres are converted to the centimetres the upstream body model works in. */
+	/**
+	 * A height is centimetres and nothing else. Metres were accepted and converted exactly, which
+	 * made this interface the only reader that would take them: R4 applies its own bodyheight
+	 * profile to every 8302-2 and binds the unit to cm or inches, so a host validating its own
+	 * payload got an error for a value this service was happy with.
+	 */
 	@Test
-	void convertsHeightToTheUnitTheUpstreamReads() {
-		assertThat(labResultFor("8302-2", 1.72, "m").value()).isEqualTo("172");
+	void acceptsAHeightOnlyInCentimetres() {
 		assertThat(labResultFor("8302-2", 172, "cm").value()).isEqualTo("172");
+		assertThatThrownBy(() -> labResultFor("8302-2", 1.72, "m"))
+				.isInstanceOf(InvalidRequestException.class)
+				.hasMessageContaining("must be in [cm]");
 	}
 
 	@Test
@@ -270,23 +277,68 @@ class SessionParametersMapperTest {
 		assertThat(labResultAt("2024-07-04").date()).isEqualTo(LocalDate.of(2024, 7, 4));
 	}
 
-	/** Every result is forwarded as it arrived: which one counts is the rules engine's decision. */
+	/**
+	 * Only one result per determination is ever weighed upstream, so only one is sent: a host that
+	 * repeats a determination gets the latest of the series forwarded and the rest dropped.
+	 */
 	@Test
-	void forwardsRepeatedDeterminationsInTheOrderTheyArrived() {
+	void forwardsOnlyTheMostRecentResultPerDetermination() {
+		List<LabResult> results = laboratoryDataFor(
+				observation("62238-1", quantity(32, "mL/min/{1.73_m2}"), "2024-07-04T09:15:00"),
+				observation("62238-1", quantity(28, "mL/min/{1.73_m2}"), "2024-07-04T16:40:00"),
+				observation("62238-1", quantity(35, "mL/min/{1.73_m2}"), "2024-06-02T11:00:00"));
+
+		assertThat(results).hasSize(1);
+		assertThat(results.getFirst().value()).isEqualTo("28");
+		assertThat(results.getFirst().time()).isEqualTo(LocalTime.of(16, 40));
+	}
+
+	/** A missing time of day is midnight, as it is upstream — so a timed result of the same day wins. */
+	@Test
+	void readsAMissingTimeOfDayAsMidnightWhenChoosingTheMostRecent() {
+		List<LabResult> results = laboratoryDataFor(
+				observation("62238-1", quantity(32, "mL/min/{1.73_m2}"), "2024-07-04T08:00:00"),
+				observation("62238-1", quantity(28, "mL/min/{1.73_m2}"), "2024-07-04"));
+
+		assertThat(results.getFirst().value()).isEqualTo("32");
+	}
+
+	/** The engine keeps the first of a tie, so the value forwarded is the one it would have read. */
+	@Test
+	void keepsTheFirstOfTwoResultsTakenAtTheSameMoment() {
+		List<LabResult> results = laboratoryDataFor(
+				observation("62238-1", quantity(32, "mL/min/{1.73_m2}"), "2024-07-04"),
+				observation("62238-1", quantity(28, "mL/min/{1.73_m2}"), "2024-07-04"));
+
+		assertThat(results).hasSize(1);
+		assertThat(results.getFirst().value()).isEqualTo("32");
+	}
+
+	/**
+	 * Selection is per LOINC code, because that is what the upstream tests on: a kalium in blood
+	 * does not supersede a kalium in serum, and deciding that it did is a clinical judgement this
+	 * interface was not asked to make. Survivors keep the order they were first sent in.
+	 */
+	@Test
+	void keepsOneResultForEachDeterminationTheHostSent() {
+		List<LabResult> results = laboratoryDataFor(
+				observation("2823-3", quantity(4.1, "mmol/L"), "2024-07-04T09:15:00"),
+				observation("6298-4", quantity(3.8, "mmol/L"), "2024-07-04T09:15:00"),
+				observation("2823-3", quantity(4.4, "mmol/L"), "2024-07-05T09:15:00"));
+
+		assertThat(results).extracting(LabResult::loinc).containsExactly("2823-3", "6298-4");
+		assertThat(results.getFirst().value()).isEqualTo("4.4");
+	}
+
+	private List<LabResult> laboratoryDataFor(Observation... observations) {
 		Parameters parameters = parameters();
-		parameters.addParameter().setName(SessionParametersMapper.PARAM_OBSERVATION)
-				.setResource(observation("62238-1", quantity(32, "mL/min/{1.73_m2}"), "2024-07-04T09:15:00"));
-		parameters.addParameter().setName(SessionParametersMapper.PARAM_OBSERVATION)
-				.setResource(observation("62238-1", quantity(28, "mL/min/{1.73_m2}"), "2024-07-04T16:40:00"));
+		for (Observation observation : observations) {
+			parameters.addParameter().setName(SessionParametersMapper.PARAM_OBSERVATION)
+					.setResource(observation);
+		}
 
-		List<LabResult> results = mapper.toSessionRequest(bind(parameters, SessionType.FORMULARY))
+		return mapper.toSessionRequest(bind(parameters, SessionType.FORMULARY))
 				.patient().laboratoryData();
-
-		assertThat(results).hasSize(2);
-		assertThat(results.get(0).value()).isEqualTo("32");
-		assertThat(results.get(0).time()).isEqualTo(LocalTime.of(9, 15));
-		assertThat(results.get(1).value()).isEqualTo("28");
-		assertThat(results.get(1).time()).isEqualTo(LocalTime.of(16, 40));
 	}
 
 	private LabResult labResultAt(String effectiveDateTime) {

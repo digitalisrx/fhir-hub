@@ -87,15 +87,26 @@ rule can test — twelve, four used by current rules, the nierfunctie in 666 of 
 and height for dose checking. A code outside the list is a 400 rather than a silent no-op, because
 a prescriber who sent a lab value and got no signal would read that as an all-clear. Units are
 pinned per code for the same reason: the value is evaluated in the unit the rule was written in, so
-mg/dL where mmol/L is expected is a different answer. See `fhir/LabDeterminations`.
+mg/dL where mmol/L is expected is a different answer. One unit each and nothing is converted — a
+height is `cm`, because R4 validates every `8302-2` against its own `bodyheight` profile and binds
+the unit to `cm` or `[in_i]`, so the metres this interface used to convert exactly were a unit a
+host's own validator rejects. See `fhir/LabDeterminations`.
 
-**The time of day on a lab result is load-bearing.** The rules engine takes the most recent result
-per determination, and `TCRELabValueList.MostRecent` compares the `date` attribute alone, keeping
-the first of a tie — so a date-only value puts every result of one day at midnight and hands the
-decision to document order. `LabResult` carries a nullable `LocalTime`, and both builders write
-`yyyy-MM-dd'T'HH:mm:ss` with seconds always, because the engine's `StringToDate` branches on the
-string being exactly ten characters and a formatter that drops zero seconds matches neither form.
-Nothing here de-duplicates or reorders results: which one counts is the engine's decision.
+**Only the most recent result per determination is sent.** A host may state a determination more
+than once and only one is ever weighed upstream, so `ClinicalContextMapper.mostRecentPerDetermination`
+keeps the latest per LOINC code — the same comparison the rules engine makes, so the value forwarded
+is the one it would have picked. Selection is per code rather than per determination, because that
+is the granularity the upstream tests on. It matters most for weight and height: the Hub's dose
+check reads them by NHG id without looking at a date, so a stale weight beside a current one was a
+dose band computed against the wrong patient.
+
+**The time of day on a lab result is load-bearing.** It is what decides which result of a series is
+the latest, here and again upstream, where `TCRELabValueList.MostRecent` compares the `date`
+attribute alone and keeps the first of a tie — so a date-only value counts as midnight and two
+results from one day are ordered by the sequence they were sent in. `LabResult` carries a nullable
+`LocalTime`, and both builders write `yyyy-MM-dd'T'HH:mm:ss` with seconds always, because the
+engine's `StringToDate` branches on the string being exactly ten characters and a formatter that
+drops zero seconds matches neither form.
 
 **Gender.** FHIR has four administrative genders; Prescriptor's `PatientGender` has three — `M`,
 `F` and `X` ("Unknown") — and `male`, `female` and `unknown` map across. Sex-specific surveillance

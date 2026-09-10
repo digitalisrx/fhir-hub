@@ -166,12 +166,14 @@ public class MedicationSurveillanceRequestBuilder {
 				//
 				// The moment goes in the `date` attribute, with the time folded into it, because
 				// that is the only one anything reads: TCRELabValue.ReadFromXML takes `date` and
-				// nothing in either the engine or the Hub reads `time` at all. It matters because
-				// several results for one determination are resolved by taking the most recent and
-				// the comparison is on this attribute alone, so date-only values put every result
-				// of a day at midnight and hand the decision to document order. `time` is written
+				// nothing in either the engine or the Hub reads `time` at all. `time` is written
 				// beside it because the schema defines it and the Hub's examples carry it — it is
 				// the redundant copy, not the load-bearing one.
+				//
+				// One result per LOINC code reaches here: ClinicalContextMapper keeps the most
+				// recent of a series. That matters most for the NHG pair below, which the Hub
+				// selects by id without reading a date, so a stale weight sent beside a current one
+				// would otherwise be the one a dose is computed against.
 				p.element("laboratoryData", l -> {
 					for (LabResult lab : request.laboratoryData()) {
 						XmlWriter loinc = l.empty("LOINC")

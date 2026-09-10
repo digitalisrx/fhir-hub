@@ -4,16 +4,16 @@
     "fshName": "ExampleResultBundle",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 178,
-    "endLine": 191
+    "startLine": 169,
+    "endLine": 182
   },
   {
     "outputFile": "Bundle-ExampleSurveillanceBundle.json",
     "fshName": "ExampleSurveillanceBundle",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 524,
-    "endLine": 536
+    "startLine": 515,
+    "endLine": 527
   },
   {
     "outputFile": "CodeSystem-gstandaard-bijzonder-kenmerk.json",
@@ -28,64 +28,56 @@
     "fshName": "ExampleLengthInCentimetres",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 66,
-    "endLine": 79
-  },
-  {
-    "outputFile": "Observation-obs-lengte-m.json",
-    "fshName": "ExampleLengthInMetres",
-    "fshType": "Instance",
-    "fshFile": "examples.fsh",
-    "startLine": 81,
-    "endLine": 94
+    "startLine": 68,
+    "endLine": 85
   },
   {
     "outputFile": "Parameters-ExampleCreateRxSessionInput.json",
     "fshName": "ExampleCreateRxSessionInput",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 224,
-    "endLine": 240
+    "startLine": 215,
+    "endLine": 231
   },
   {
     "outputFile": "Parameters-ExampleFormularySessionInput.json",
     "fshName": "ExampleFormularySessionInput",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 96,
-    "endLine": 119
+    "startLine": 87,
+    "endLine": 110
   },
   {
     "outputFile": "Parameters-ExampleSessionOutput.json",
     "fshName": "ExampleSessionOutput",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 121,
-    "endLine": 129
+    "startLine": 112,
+    "endLine": 120
   },
   {
     "outputFile": "Parameters-ExampleStatementCheck.json",
     "fshName": "ExampleStatementCheck",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 457,
-    "endLine": 475
+    "startLine": 448,
+    "endLine": 466
   },
   {
     "outputFile": "Parameters-ExampleSurveillanceInput.json",
     "fshName": "ExampleSurveillanceInput",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 251,
-    "endLine": 271
+    "startLine": 242,
+    "endLine": 262
   },
   {
     "outputFile": "Parameters-ExampleSurveillanceReferenceCase.json",
     "fshName": "ExampleSurveillanceReferenceCase",
     "fshType": "Instance",
     "fshFile": "examples.fsh",
-    "startLine": 396,
-    "endLine": 420
+    "startLine": 387,
+    "endLine": 411
   },
   {
     "outputFile": "StructureDefinition-ext-Dosage.CodedDirections.json",

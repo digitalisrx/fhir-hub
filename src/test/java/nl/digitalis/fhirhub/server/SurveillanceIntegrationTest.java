@@ -303,6 +303,43 @@ class SurveillanceIntegrationTest {
 	}
 
 	/**
+	 * A repeated determination reaches the Hub once, as the latest value.
+	 *
+	 * <p>Weight is the case that has to be right: the dose check selects it with
+	 * {@code NHG[@id="357"]} and reads no date, so a weight from last year sent beside today's
+	 * would be a dose band computed against the wrong patient — and the answer would look like a
+	 * complete check. The LOINC form the beslisregels read is resolved by date upstream, but only
+	 * one value is ever weighed there either, so both forms go out once.
+	 */
+	@Test
+	void sendsOnlyTheMostRecentResultOfARepeatedDetermination() {
+		stub("medication-surveillance-response.xml");
+
+		Parameters parameters = surveillanceParameters();
+		Observation stale = new Observation();
+		stale.setId("weight-0");
+		stale.setStatus(Observation.ObservationStatus.FINAL);
+		stale.getCode().addCoding().setSystem(Systems.LOINC).setCode("29463-7");
+		stale.setEffective(new DateTimeType("2024-01-15"));
+		stale.setValue(new Quantity().setValue(52L)
+				.setSystem(Systems.UCUM).setCode("kg").setUnit("kg"));
+		parameters.addParameter().setName("observation").setResource(stale);
+
+		assertThat(postFhir("/fhir/surveillance/$check-medication-request", parameters).statusCode())
+				.isEqualTo(200);
+
+		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+		assertThat(sent)
+				.as("the weight of 2026-09-06, in both the forms a weight is read in")
+				.contains("<LOINC num=\"29463-7\"")
+				.contains("<NHG id=\"357\"")
+				.contains("value=\"70\"");
+		assertThat(sent).as("and the one from 2024 is not sent at all").doesNotContain("value=\"52\"");
+		assertThat(sent.split("<LOINC ", -1)).as("one LOINC element").hasSize(2);
+		assertThat(sent.split("<NHG ", -1)).as("one NHG element").hasSize(2);
+	}
+
+	/**
 	 * A signal from the dossier check points at a {@code MedicationStatement}, not at a
 	 * {@code MedicationRequest}. The report cannot say which — it echoes back the {@code pending}
 	 * and {@code trigger} attributes this interface set, and those mean "under test" whichever

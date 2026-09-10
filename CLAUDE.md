@@ -240,10 +240,14 @@ One eGFR code, `62238-1` (CKD-EPI), because that is what Dutch laboratories repo
 and `50210-4` (cystatin C) are one line each to add, but re-labelling one formula as another is not
 on: they do not give the same number.
 
-Units are pinned per code and converted only where the conversion is exact (`m` → `cm`). The value
-is evaluated in the unit the rule was written in, so kalium in mg/dL is a different answer, not a
-rounded one. The eGFR must arrive as `mL/min/{1.73_m2}`: the G-Standaard compares it against ml/min
-thresholds unchanged, which is its decision to make and not one to hide behind a permissive unit.
+Units are pinned per code and nothing is converted. The value is evaluated in the unit the rule was
+written in, so kalium in mg/dL is a different answer, not a rounded one. The eGFR must arrive as
+`mL/min/{1.73_m2}`: the G-Standaard compares it against ml/min thresholds unchanged, which is its
+decision to make and not one to hide behind a permissive unit. A lengte must arrive as `cm` — R4
+applies its own `bodyheight` profile to every `8302-2` and binds the unit to `ucum-bodylength`, so
+the metres this interface converted exactly were a unit a host's own validator rejects. The factor
+in `Determination.factorByUnit` is 1 everywhere as a result; `LabDeterminationsTest` exercises the
+conversion on a synthetic determination so the mechanism does not rot before the next one needs it.
 
 **Gewicht and lengte are the exception, and the exception has a test rather than a preference.**
 They are read by the G-Standaard dose-band model instead of by the rules, and the Hub reads them
@@ -273,8 +277,14 @@ still gets a date: precision is a claim.
 The schema also has a separate `time` attribute on `<LOINC>` that nothing reads. The surveillance
 builder writes both — the moment folded into `date` because that is what is read, `time` beside it
 because the schema defines it. Do not move the time out of `date` on the strength of the schema
-looking tidier. Nothing here de-duplicates or reorders results: which one counts is the engine's
-decision, and weight and height do not even go by date.
+looking tidier.
+
+**Only the latest result per LOINC code leaves here.** `ClinicalContextMapper.mostRecentPerDetermination`
+makes the selection the engine would have made — missing time as midnight, first of a tie — so a
+repeated determination cannot be answered from an older value. Weight and height are why it is not
+left to the engine: the Hub's dose check reads them by NHG id and never looks at a date, so a stale
+weight beside a current one is a dose band computed against the wrong patient. Selection is per
+code, not per determination: a kalium in blood does not supersede one in serum.
 
 **The two session types read their key from different members** — `PrescriptorSessionKey` for
 formulary, `SessionKey` for CreateRx. An upstream inconsistency, encoded in `SessionType` and pinned
@@ -563,6 +573,14 @@ clones its chrome from a page the publisher just rendered so the template stays 
 in Dutch and why a LOINC `display` in an example must be LOINC's *Dutch* term or none at all. The
 examples send none: a wrong one is a validation error rather than a warning, because unlike the
 G-Standaard, LOINC *is* distributed.
+
+**A body height or weight example is validated against a profile it does not claim.** R4 makes the
+core `bodyheight`/`bodyweight` profiles mandatory for LOINC `8302-2` and `29463-7`, and the IG
+Publisher enforces it — so `ExampleLengthInCentimetres` carries a `vital-signs` category and a
+`subject` this interface never reads, and there is no metres example, because `m` is not in
+`ucum-bodylength` and no example of one can pass. Removing either element, or adding that example
+back, is 3 to 5 QA errors and a failed `deploy.sh`. The service no longer accepts metres either —
+see *Lab values are LOINC end to end* — so the example and the contract now agree.
 
 **A clean build is `0 errors`, not `0 warnings`.** `ig/input/ignoreWarnings.txt` suppresses four
 template-fragment warnings and nothing else. The G-Standaard "code cannot be validated" notes, the

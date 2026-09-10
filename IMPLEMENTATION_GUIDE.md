@@ -146,7 +146,7 @@ A `Parameters` resource. Anything outside these cardinalities is a 400 naming th
 | `allergyIntolerance` | 0..* | `AllergyIntolerance` | `code.coding` in SSK, SNK or OGGrp |
 | `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
 | `medicationStatement` | 0..* | `MedicationStatement` | `medicationCodeableConcept` in PRK or HPK |
-| `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
+| `observation` | 0..* | `Observation` | A LOINC-coded lab determination. Several results for one determination are allowed; only the latest is used — see [Lab determinations](#lab-determinations) |
 | `prescription` | 0..0 | — | Rejected here with a 400; `$createrx-session` only |
 
 - **`patient`** — `other` or absent `gender` is a 400; send `unknown` instead. Send the real sex
@@ -487,7 +487,7 @@ cardinalities is a 400 naming the element.
 | `medicationStatement` | 0..* | `MedicationStatement` | The patient's current medication, in PRK or HPK |
 | `allergyIntolerance` | 0..* | `AllergyIntolerance` | `code.coding` in SSK, SNK or OGGrp |
 | `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
-| `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
+| `observation` | 0..* | `Observation` | A LOINC-coded lab determination. Several results for one determination are allowed; only the latest is used — see [Lab determinations](#lab-determinations) |
 
 - **Every resource is one you already build**: the same profiles as the session operations, down to
   the 400 on an unresolvable drug code. `prescription` binds the same `fhirhub-PrescriptionInput` as
@@ -520,7 +520,7 @@ none optional in effect.
   `effectivePeriod` that has **ended** says the patient stopped, and that entry is not weighed.
 - **Send a weight wherever the dose depends on it, and a height with it.** A weight-dependent dose
   band with no weight is not a pass but a red signal: *"Geen doseringscontrole: onbekend actueel
-  gewicht"*. Ordinary `observation` parameters, LOINC `29463-7` (`kg`) and `8302-2` (`cm` or `m`);
+  gewicht"*. Ordinary `observation` parameters, LOINC `29463-7` (`kg`) and `8302-2` (`cm`);
   body surface is derived from both, so the height matters for anything dosed per m².
 
 ```jsonc
@@ -692,7 +692,7 @@ Identical to the other operation's input except in its medication parameters.
 | `medicationStatement` | 1..* | `MedicationStatement` | **Required**, and every entry is under test |
 | `allergyIntolerance` | 0..* | `AllergyIntolerance` | `code.coding` in SSK, SNK or OGGrp |
 | `condition` | 0..* | `Condition` | `code.coding` in CICode or ICPC |
-| `observation` | 0..* | `Observation` | A LOINC-coded lab determination — see [Lab determinations](#lab-determinations) |
+| `observation` | 0..* | `Observation` | A LOINC-coded lab determination. Several results for one determination are allowed; only the latest is used — see [Lab determinations](#lab-determinations) |
 | ~~`prescription`~~ | — | — | **Not accepted.** Use [`$check-medication-request`](#post-fhirsurveillancecheck-medication-request) |
 
 - **`medicationStatement` means something different here**: the *background* in the other
@@ -796,7 +796,7 @@ send, so nothing is translated on the way through.
 | Natrium, serum of plasma | `2951-2` | `mmol/L` | no current rule |
 | Lithiumspiegel | `14334-7` | `mmol/L` | no current rule |
 | Gewicht | `29463-7` | `kg` | dose checking |
-| Lengte | `8302-2` | `cm` or `m` | dose checking |
+| Lengte | `8302-2` | `cm` | dose checking |
 
 - **A determination outside the list is a 400, not a silent no-op**, because a prescriber who
   supplied a lab result and saw no warning would read that as an all-clear.
@@ -806,9 +806,17 @@ send, so nothing is translated on the way through.
 - **The unit is checked against the code** (`system: "http://unitsofmeasure.org"` plus the `code`
   above), because the value is evaluated in the unit the rule was written in: kalium in mg/dL is a
   different answer, not a rounded one. An eGFR must arrive as `mL/min/{1.73_m2}`, not `mL/min`.
-  Exact conversions are done for you: a length in `m` is forwarded in centimetres — the same
-  height [in centimetres](Observation-obs-lengte-cm.html) and
-  [in metres](Observation-obs-lengte-m.html).
+  Nothing is converted: the unit in the table is the only one accepted, and anything else is a 400.
+- **A height is `cm`; `m` is a 400.** Metres used to be accepted and converted
+  exactly. They are not any more, because R4 validates every `Observation` coded `8302-2` against
+  its own `bodyheight` profile — whatever profile the resource claims — and that binds the unit to
+  `cm` or `[in_i]`. A unit only this interface would take is a unit your own validator rejects, so
+  it is gone rather than special. Inches are not accepted either: the G-Standaard is metric.
+- **Weight and height are vital signs to R4 itself.** The same rule applies `bodyweight` to
+  `29463-7`, and both core profiles also require the `vital-signs` category and a `subject`. This
+  interface requires neither and reads neither, so a payload without them passes here and fails a
+  core validation elsewhere. Send them and you satisfy both — the
+  [example](Observation-obs-lengte-cm.html) shows the shape.
 - **Send no `display` unless it is LOINC's own term.** Nothing here checks it: LOINC is not in this
   service's validator, so any display passes while the `code` is still checked against the value
   set above. It is forwarded verbatim as the caption the prescriber sees, in preference to this
@@ -817,12 +825,9 @@ send, so nothing is translated on the way through.
 - **Dates matter as much as values.** Rules test them — *is de ClCr ouder dan 13 maanden*, *is de
   INR max. 24 uur oud* — so `effectiveDateTime` is required, and it is when the sample was taken,
   not when the report was released. A value older than the rule's window counts as absent.
-- **Only the most recent result per determination is used** — not averaged, and the earlier value
-  is not tested separately. So send the one value you want weighed rather than a series, and:
-  - **Same-day results need a time.** Date-only values are equally recent to the engine, which then
-    takes the one appearing **first** in the request. With times, the later wins.
-  - **Weight and height do not go by date at all.** Dose checking reads the **first** `29463-7` and
-    the first `8302-2` whatever their dates say. Send one of each, current.
+- **Several results for one determination are allowed; only the latest is used.** Latest by
+  `effectiveDateTime`, per LOINC code. A date-only value counts as midnight, so among results of
+  one day the first sent wins.
 - One determination per `observation` parameter, repeated as needed. `component` is not read —
   resolve a multi-component result to one number first. `interpretation`, `referenceRange`, `method`
   and `note` are ignored: this is an input to a decision, not a lab report.

@@ -92,10 +92,10 @@ final class DigitalisRxBuilder {
 				// number. The unit is carried too — Prescriptor_Units reads it to convert weight
 				// and height — though the value is already in the unit the rules evaluate in.
 				//
-				// Results are sent as they arrived: no de-duplication and no ordering. Where a host
-				// sends several for one determination the engine takes the most recent, which is
-				// its decision to make and needs the date attribute to be precise enough to make it
-				// — see upstreamMoment below.
+				// One result per LOINC code: where a host sent a series, ClinicalContextMapper
+				// already kept the most recent — the only one the engine would have read — so this
+				// list is written as it arrives. The date attribute still carries the time,
+				// because that is what made the selection possible; see upstreamMoment below.
 				p.element("laboratoryData", l -> {
 					for (LabResult lab : patient.laboratoryData()) {
 						l.empty("LOINC")
@@ -117,10 +117,11 @@ final class DigitalisRxBuilder {
 	 * parses: {@code yyyy-mm-dd} when the host stated only a date, {@code yyyy-mm-ddThh:mm:ss} when
 	 * it stated a time.
 	 *
-	 * <p>The time is not decoration. Several results for one determination are resolved by
-	 * {@code TCRELabValueList.MostRecent}, which compares this attribute and keeps the first of a
-	 * tie — so with date-only values, two results from one day are ordered by the sequence they were
-	 * sent in rather than by which is later.
+	 * <p>The time is not decoration. It is what decides which of several results for one
+	 * determination is the most recent — the comparison
+	 * {@code ClinicalContextMapper.mostRecentPerDetermination} makes before this builder sees the
+	 * list, and the one {@code TCRELabValueList.MostRecent} makes upstream on this attribute alone.
+	 * With date-only values, two results from one day tie and the first sent wins, here and there.
 	 */
 	private static String upstreamMoment(LabResult lab) {
 		if (lab.time() == null) {

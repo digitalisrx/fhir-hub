@@ -32,7 +32,11 @@ import org.springframework.stereotype.Component;
  * downstream could notice. Each determination therefore lists the UCUM codes it accepts, with the
  * factor to the unit the upstream wants, and refuses anything else. An eGFR must arrive as
  * {@code mL/min/{1.73_m2}} — its own unit — rather than as {@code mL/min}, so the payload cannot be
- * ambiguous about which quantity it carries.
+ * ambiguous about which quantity it carries. A lengte must arrive as {@code cm}: metres were
+ * accepted and converted until R4's own {@code bodyheight} profile, which the validator applies to
+ * every {@code 8302-2} whatever profile the resource claims, turned out to bind the unit to
+ * {@code cm} or {@code [in_i]}. An accepted unit that a host's validator rejects is worse than a
+ * narrow one. No determination converts today; the factor stays because the next one may.
  *
  * <h2>What is deliberately not here</h2>
  * The G-Standaard also lists {@code 77147-7} (MDRD) and {@code 50210-4} (cystatin C) for the
@@ -50,7 +54,9 @@ public class LabDeterminations {
 	 *
 	 * @param mfbParameter {@code BST685T.MFBPANR}, or null for the two the dose check reads rather
 	 *                     than the rules
-	 * @param factorByUnit UCUM code to the factor for {@link #unit}, so {@code m} to {@code cm} is 100
+	 * @param factorByUnit UCUM code to the factor for {@link #unit} — 1 for every determination as
+	 *                     it stands, since the one conversion there was, {@code m} to {@code cm} at
+	 *                     100, was dropped with metres
 	 * @param nhg          the NHG identity to send <em>as well</em>, for the two determinations the
 	 *                     dose check reads; null for everything the rules read. See
 	 *                     {@link NhgEquivalent}
@@ -157,8 +163,14 @@ public class LabDeterminations {
 
 		// Gewicht and lengte are read by dose checking rather than by the rules: 45.700 dose bands
 		// in BST643T carry a minimum weight and 1.215 a body surface bound, and evs2.0 reads both
-		// out of laboratoryData by these LOINC codes. Metres are converted to the centimetres its
-		// body model works in, so the number is right even if the unit attribute is ignored.
+		// out of laboratoryData by these LOINC codes.
+		//
+		// One unit each, and for lengte that is narrower than the conversion this class could do:
+		// R4 makes the core bodyheight profile mandatory for 8302-2 and binds its unit to
+		// ucum-bodylength, which has cm and [in_i] and no m. Accepting metres meant accepting a
+		// payload that a host's own validator rejects, so the exact conversion was dropped rather
+		// than left as a second spelling only this interface honours. Inches are not accepted
+		// either: the G-Standaard is metric and a host sending them is a host to talk to first.
 		//
 		// They are also the two determinations that carry an NHG identity, because the Hub's dose
 		// check reads them by NHG id and cannot read a LOINC code — see NhgEquivalent for why that
@@ -168,7 +180,7 @@ public class LabDeterminations {
 		// NHG 560 records a length in metres, so the centimetres this interface holds are divided
 		// back down. That is the unit the Hub's Mosteller expression expects — it multiplies the
 		// value it finds by 100 to get the centimetres the formula wants.
-		add("8302-2", null, "Lengte", "cm", Map.of("cm", AS_IS, "m", BigDecimal.valueOf(100)),
+		add("8302-2", null, "Lengte", "cm", Map.of("cm", AS_IS),
 				new NhgEquivalent(560, "LNGP", "AO", null, new BigDecimal("0.01")));
 	}
 

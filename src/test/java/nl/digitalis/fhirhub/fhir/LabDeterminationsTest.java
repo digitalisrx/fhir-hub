@@ -3,10 +3,12 @@ package nl.digitalis.fhirhub.fhir;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,6 +72,33 @@ class LabDeterminationsTest {
 	void theEgfrCarriesItsNormalisedUnit() {
 		assertThat(determinations.forLoinc("62238-1").acceptedUnits())
 				.containsExactly("mL/min/{1.73_m2}");
+	}
+
+	/**
+	 * A height is centimetres alone. R4 applies its own bodyheight profile to every 8302-2 and
+	 * binds the unit to cm or inches, so the metres this class used to convert exactly were a unit
+	 * only this interface would take — and a host validating its own payload saw an error for a
+	 * value that was accepted here. Inches are refused as well: the G-Standaard is metric.
+	 */
+	@Test
+	void theHeightIsCentimetresAlone() {
+		assertThat(determinations.forLoinc("8302-2").acceptedUnits()).containsExactly("cm");
+	}
+
+	/**
+	 * Nothing is converted today, and the mechanism that would is still exercised: every accepted
+	 * unit is the unit the upstream reads, so a factor other than 1 has no determination to prove
+	 * it on. Left untested it would rot, and the first determination to need one would find out
+	 * upstream.
+	 */
+	@Test
+	void convertsByTheFactorADeterminationDeclares() {
+		Determination converting = new Determination("x", 1, "Onder test", "cm",
+				Map.of("m", BigDecimal.valueOf(100)), null);
+
+		assertThat(converting.toUpstreamUnit("m", new BigDecimal("1.72")))
+				.isEqualByComparingTo("172");
+		assertThat(converting.toUpstreamUnit("cm", BigDecimal.ONE)).isNull();
 	}
 
 	/**

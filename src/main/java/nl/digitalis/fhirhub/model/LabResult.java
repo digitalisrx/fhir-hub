@@ -12,10 +12,11 @@ import java.time.LocalTime;
  * {@code unit} because the rules are written in one — see {@code fhir/LabDeterminations}.
  *
  * <p>{@code time} is the time of day the sample was taken, or {@code null} when the host stated
- * only a date. It is carried because the rules engine resolves several results for one
- * determination by taking the most recent, and that comparison reads this single attribute: a
- * date-only value collapses to midnight, so two results from one day tie and the tie is broken by
- * the order they were sent in rather than by which is later. See
+ * only a date. It is what decides which of several results for one determination is forwarded:
+ * only the most recent is sent, and a date-only value collapses to midnight, so two results from
+ * one day tie and the tie is broken by the order they were sent in rather than by which is later.
+ * The same comparison is made again upstream on the {@code date} attribute alone — see
+ * {@code ClinicalContextMapper.mostRecentPerDetermination} and
  * {@code DigitalisRxBuilder.upstreamMoment} for the two shapes the engine parses.
  *
  * <p>{@code uid} is the host's own id for the record, echoed back inside a finding's context so a

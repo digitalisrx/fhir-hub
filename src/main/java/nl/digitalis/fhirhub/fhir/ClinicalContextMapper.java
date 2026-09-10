@@ -2,11 +2,14 @@ package nl.digitalis.fhirhub.fhir;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.hl7.fhir.r4.model.AllergyIntolerance;
@@ -249,13 +252,21 @@ public class ClinicalContextMapper {
 	}
 
 	/**
-	 * Maps lab Observations onto the determinations medication surveillance reads.
+	 * Maps lab Observations onto the determinations medication surveillance reads, keeping the
+	 * most recent result per LOINC code.
 	 *
 	 * <p>A host sends a LOINC code and the upstream tests that same code, so nothing is translated;
 	 * {@link LabDeterminations} says which codes a rule can read and in which unit. A code outside
 	 * that list is refused rather than forwarded, because forwarding it would leave the prescriber
 	 * believing a value had been weighed when nothing read it — the same false all-clear an
 	 * unresolvable drug code is refused for.
+	 *
+	 * <p>A host may state a determination more than once — a series of eGFRs, a weight from every
+	 * consultation — and only one of them is ever evaluated: the rules engine takes the most recent
+	 * result per determination ({@code TProtocolParserDataLOINC.GetValueExt}), and the G-Standaard
+	 * dose bands read weight and height by NHG element without looking at a date at all. So the
+	 * selection is made here rather than left to the document order the earlier one arrived in —
+	 * see {@link #mostRecentPerDetermination}.
 	 */
 	public List<LabResult> laboratoryData(List<Observation> observations) {
 		List<LabResult> results = new ArrayList<>();
@@ -289,7 +300,42 @@ public class ClinicalContextMapper {
 					uid(observation.getIdPart(), "observation", index)));
 		}
 
-		return results;
+		return mostRecentPerDetermination(results);
+	}
+
+	/**
+	 * The latest result for each LOINC code, in the order the determinations were first sent.
+	 *
+	 * <p>Only one result per determination is ever weighed upstream, so sending the rest is at best
+	 * noise and at worst the wrong value being read. The rules engine resolves a series by taking
+	 * the most recent ({@code TCRELabValueList.MostRecent}) and the Hub's dose check does not
+	 * resolve one at all — it reads the first {@code <NHG>} of its id whatever the dates say, which
+	 * makes a stale weight beside a current one a dose computed against the wrong patient.
+	 *
+	 * <p>Selection is per LOINC code and not per determination, because that is the granularity the
+	 * upstream tests on: a kalium in blood does not supersede a kalium in serum, and deciding that
+	 * it did would be this interface answering a clinical question it was not asked.
+	 *
+	 * <p>A result without a time of day counts as midnight, and the first of a tie wins — the same
+	 * comparison the engine makes, so the value forwarded is the one it would have picked out of
+	 * the full series. That is also why a host sending several results on one day should state the
+	 * time: without it the winner is document order, here as upstream.
+	 */
+	private List<LabResult> mostRecentPerDetermination(List<LabResult> results) {
+		Map<String, LabResult> latest = new LinkedHashMap<>();
+		for (LabResult result : results) {
+			LabResult held = latest.get(result.loinc());
+			if (held == null || moment(result).isAfter(moment(held))) {
+				latest.put(result.loinc(), result);
+			}
+		}
+
+		return List.copyOf(latest.values());
+	}
+
+	/** When a result was taken, with an unstated time reading as midnight, as it does upstream. */
+	private LocalDateTime moment(LabResult result) {
+		return result.date().atTime(result.time() == null ? LocalTime.MIDNIGHT : result.time());
 	}
 
 	private Coding firstCodingForSystem(CodeableConcept concept, String system) {
@@ -344,7 +390,9 @@ public class ClinicalContextMapper {
 	 * <p>The upstream carries no unit, so the number has to be right on arrival: a kalium in mg/dL
 	 * rather than mmol/L is a different answer, not a rounded one, and nothing downstream could
 	 * notice. Hence a {@code Quantity} with a UCUM code the determination accepts, converted where
-	 * the conversion is exact, and a refusal otherwise.
+	 * a determination declares a factor, and a refusal otherwise. As it stands every accepted unit
+	 * is the unit the upstream reads, so nothing is converted — a height must arrive in {@code cm}
+	 * rather than {@code m}, because R4 binds a body height to {@code ucum-bodylength}.
 	 */
 	private String valueIn(Observation observation, Determination determination) {
 		if (!(observation.getValue() instanceof Quantity quantity) || !quantity.hasValue()) {

@@ -59,17 +59,23 @@ Usage: #inline
 * valueQuantity.system = "http://unitsofmeasure.org"
 * valueQuantity.code = #"mL/min/{1.73_m2}"
 
-// Lengte is the one determination with two accepted units, so it gets one example each. Both
-// state the same height: `m` is an exact conversion, so 1.78 m is forwarded as the 178 cm the
-// G-Standaard dose model works in. Send one of the two, not both — dose checking reads the first
-// 8302-2 in the request whatever its date.
+// The one example that has to satisfy a profile it does not claim: R4 requires an Observation
+// coded 8302-2 to conform to the core Body height profile, which wants the vital-signs category,
+// a subject, and centimetres or inches. So it carries both elements even though this interface
+// reads neither, and a host can copy it and be conformant to core as well as to this guide. That
+// binding is also why centimetres are the only unit accepted for a height — metres were taken and
+// converted exactly until it turned out no other reader would take them.
 Instance: ExampleLengthInCentimetres
 InstanceOf: FhirHubLabObservation
 Usage: #example
 Title: "Lengte in centimeters"
-Description: "A body height of 178 cm, LOINC 8302-2, in the unit the G-Standaard dose model works in."
+Description: "A body height of 178 cm, LOINC 8302-2, in the unit the G-Standaard dose model works in. The vital-signs category and the subject are there for R4's own Body height profile, which any height coded 8302-2 is validated against; this interface reads neither."
 * id = "obs-lengte-cm"
 * status = #final
+* category[0].coding[0].system = "http://terminology.hl7.org/CodeSystem/observation-category"
+* category[0].coding[0].code = #vital-signs
+* subject.extension[0].url = "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+* subject.extension[0].valueCode = #unknown
 * code.coding[0].system = "http://loinc.org"
 * code.coding[0].code = #8302-2
 * effectiveDateTime = "2026-09-08"
@@ -77,21 +83,6 @@ Description: "A body height of 178 cm, LOINC 8302-2, in the unit the G-Standaard
 * valueQuantity.unit = "cm"
 * valueQuantity.system = "http://unitsofmeasure.org"
 * valueQuantity.code = #cm
-
-Instance: ExampleLengthInMetres
-InstanceOf: FhirHubLabObservation
-Usage: #example
-Title: "Lengte in meters"
-Description: "The same height as 1.78 m, LOINC 8302-2. Metres are converted exactly, so the dose model reads 178 cm either way."
-* id = "obs-lengte-m"
-* status = #final
-* code.coding[0].system = "http://loinc.org"
-* code.coding[0].code = #8302-2
-* effectiveDateTime = "2026-09-08"
-* valueQuantity.value = 1.78
-* valueQuantity.unit = "m"
-* valueQuantity.system = "http://unitsofmeasure.org"
-* valueQuantity.code = #m
 
 Instance: ExampleFormularySessionInput
 InstanceOf: FhirHubFormularySessionInput
@@ -386,8 +377,8 @@ Usage: #inline
 * code.coding[0].code = #62238-1
 // No display: LOINC is distributed, so a display that is not LOINC's own Dutch term is a
 // validation error rather than a warning. The interface supplies the caption instead.
-// The time of day is stated, because the most recent result of a determination is the one
-// evaluated and results carrying a date alone are equally recent.
+// The time of day is stated, because only the most recent result of a determination is forwarded
+// and results carrying a date alone are equally recent.
 * effectiveDateTime = "2026-09-06T09:05:11+02:00"
 * valueQuantity.value = 35
 * valueQuantity.system = "http://unitsofmeasure.org"
