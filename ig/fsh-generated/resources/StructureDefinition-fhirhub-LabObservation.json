@@ -6,7 +6,7 @@
   "name": "FhirHubLabObservation",
   "title": "fhir-hub laboratory Observation",
   "status": "draft",
-  "description": "A single laboratory determination or body measurement, coded in LOINC, from the closed list of determinations medication surveillance reads.",
+  "description": "A single laboratory determination or body measurement, coded in LOINC. Any LOINC code validates; only the determinations in LabDeterminationVS feed medication surveillance.",
   "fhirVersion": "4.0.1",
   "kind": "resource",
   "abstract": false,
@@ -23,11 +23,11 @@
       {
         "id": "Observation.code",
         "path": "Observation.code",
-        "short": "One LOINC code, from the determinations medication surveillance reads",
-        "comment": "The list is closed and short, because the G-Standaard's list of testable measurements is: see LabDeterminationVS. A determination outside it is a 400 rather than a value that is quietly ignored — a prescriber who sent a lab result and got no signal would otherwise read that as an all-clear. Coding.display is passed on as the caption Prescriptor shows, and is best left out: this interface supplies its own caption, while a display that is not LOINC's own term for the code is a validation error in any tooling that has LOINC loaded.",
+        "short": "One LOINC code",
+        "comment": "Any LOINC code validates. Only the determinations LabDeterminationVS lists feed a beslisregel or the dose-band model — sending a code outside it is accepted, and then forwarded nowhere, because nothing here reads it. Coding.display is passed on as the caption Prescriptor shows, and is best left out: this interface supplies its own caption, while a display that is not LOINC's own term for the code is a validation error in any tooling that has LOINC loaded.",
         "binding": {
           "strength": "required",
-          "valueSet": "http://spec.digitalis.nl/fhir/ValueSet/lab-determination"
+          "valueSet": "http://spec.digitalis.nl/fhir/ValueSet/loinc"
         }
       },
       {

@@ -81,21 +81,21 @@ class TerminologyEnforcementTest {
 	}
 
 	/**
-	 * The lab side has the same shape as the G-Standaard side: one closed list, enforced. Note that
-	 * this binding <em>does</em> catch a wrong code even though LOINC is not distributed with the
-	 * profiles — the value set enumerates its concepts, so membership is decidable without the code
-	 * system. That is the same mechanism the G-Standaard bindings cannot use, because those name a
-	 * whole licensed table rather than a dozen codes.
+	 * The lab side is deliberately open, unlike the G-Standaard side above: {@code LoincVS} binds
+	 * the whole LOINC system rather than an enumerated list, so a LOINC code no beslisregel reads
+	 * still validates. Which codes are actually meaningful to medication surveillance is documented
+	 * in {@code LabDeterminationVS} and enforced by {@link ClinicalContextMapper} instead — a code
+	 * outside that narrower list is accepted here and then silently forwarded nowhere.
 	 */
 	@Test
-	void aLabDeterminationOutsideTheAcceptedListIsRejected() {
+	void aLabDeterminationOutsideTheMeaningfulListStillValidates() {
 		assertThat(errorsIn(sessionWithLabDetermination("62238-1")))
 				.as("the nierfunctie, which 666 current MFB rules read")
 				.isEmpty();
 
 		assertThat(errorsIn(sessionWithLabDetermination("718-7")))
-				.as("hemoglobine: a real LOINC code that no rule reads")
-				.isNotEmpty();
+				.as("hemoglobine: a real LOINC code that no rule reads, but still a real LOINC code")
+				.isEmpty();
 	}
 
 	private Parameters sessionWithLabDetermination(String loinc) {

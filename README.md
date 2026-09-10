@@ -78,19 +78,21 @@ provision, rotate or keep in step with Prescriptor. SMART-on-FHIR / OAuth 2.0 wo
 | `drugs[].opium` | the `OpiumActClassification` extension |
 | `advices[]` + `contentType` | `Communication.payload` — `contentString` or `contentAttachment` |
 
-**Lab determinations are LOINC end to end, from a closed list.** A host codes lab results in LOINC
-like the rest of FHIR, the upstream carries them as `<LOINC num=…>`, and the MFB datatest generator
-tests that same number — so nothing is translated and there is no NHG Tabel 45 mapping to maintain.
-The accepted codes are the G-Standaard's own: `BST684T` rows with `MFBEXSRT = 4` say which LOINC
-codes count as which MFB parameter, `BST685T` rows with `THMFBP = 2000` are every measurement a
-rule can test — twelve, four used by current rules, the nierfunctie in 666 of them — plus weight
-and height for dose checking. A code outside the list is a 400 rather than a silent no-op, because
-a prescriber who sent a lab value and got no signal would read that as an all-clear. Units are
-pinned per code for the same reason: the value is evaluated in the unit the rule was written in, so
-mg/dL where mmol/L is expected is a different answer. One unit each and nothing is converted — a
-height is `cm`, because R4 validates every `8302-2` against its own `bodyheight` profile and binds
-the unit to `cm` or `[in_i]`, so the metres this interface used to convert exactly were a unit a
-host's own validator rejects. See `fhir/LabDeterminations`.
+**Lab determinations are LOINC end to end, and any LOINC code is accepted.** A host codes lab
+results in LOINC like the rest of FHIR, the upstream carries them as `<LOINC num=…>`, and the MFB
+datatest generator tests that same number — so nothing is translated and there is no NHG Tabel 45
+mapping to maintain. Only a fixed, short list of codes is actually read by medication
+surveillance — the G-Standaard's own: `BST684T` rows with `MFBEXSRT = 4` say which LOINC codes
+count as which MFB parameter, `BST685T` rows with `THMFBP = 2000` are every measurement a rule can
+test — twelve, four used by current rules, the nierfunctie in 666 of them — plus weight and height
+for dose checking. A code outside that list is accepted, not a 400, because forwarding a lab value
+nothing reads would tell a prescriber it had been weighed, but refusing the whole request over it
+would fail closed for no clinical reason; it is simply not forwarded upstream. Units are pinned per
+code the same way for a code that *is* read: the value is evaluated in the unit the rule was
+written in, so mg/dL where mmol/L is expected is a different answer. One unit each and nothing is
+converted — a height is `cm`, because R4 validates every `8302-2` against its own `bodyheight`
+profile and binds the unit to `cm` or `[in_i]`, so the metres this interface used to convert
+exactly were a unit a host's own validator rejects. See `fhir/LabDeterminations`.
 
 **Only the most recent result per determination is sent.** A host may state a determination more
 than once and only one is ever weighed upstream, so `ClinicalContextMapper.mostRecentPerDetermination`

@@ -268,8 +268,16 @@
     "fshName": "LabDeterminationVS",
     "fshType": "ValueSet",
     "fshFile": "terminology.fsh",
-    "startLine": 122,
-    "endLine": 137
+    "startLine": 125,
+    "endLine": 140
+  },
+  {
+    "outputFile": "ValueSet-loinc.json",
+    "fshName": "LoincVS",
+    "fshType": "ValueSet",
+    "fshFile": "terminology.fsh",
+    "startLine": 145,
+    "endLine": 151
   },
   {
     "outputFile": "ValueSet-medication-code.json",
@@ -284,8 +292,8 @@
     "fshName": "OpiumActVS",
     "fshType": "ValueSet",
     "fshFile": "terminology.fsh",
-    "startLine": 139,
-    "endLine": 145
+    "startLine": 153,
+    "endLine": 159
   },
   {
     "outputFile": "ValueSet-patient-gender.json",

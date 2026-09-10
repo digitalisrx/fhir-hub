@@ -255,11 +255,13 @@ public class ClinicalContextMapper {
 	 * Maps lab Observations onto the determinations medication surveillance reads, keeping the
 	 * most recent result per LOINC code.
 	 *
-	 * <p>A host sends a LOINC code and the upstream tests that same code, so nothing is translated;
-	 * {@link LabDeterminations} says which codes a rule can read and in which unit. A code outside
-	 * that list is refused rather than forwarded, because forwarding it would leave the prescriber
-	 * believing a value had been weighed when nothing read it — the same false all-clear an
-	 * unresolvable drug code is refused for.
+	 * <p>A host may send any LOINC code — this method refuses none of them. A host sends a LOINC
+	 * code and the upstream tests that same code, so nothing is translated; {@link LabDeterminations}
+	 * says which of those codes a rule or the dose-band model can actually read, and in which unit.
+	 * An observation coded outside that list is silently dropped rather than forwarded or refused:
+	 * forwarding it would leave the prescriber believing a value had been weighed when nothing read
+	 * it, and refusing the whole request over a lab value nothing here reads would fail closed for
+	 * no clinical reason — unlike an unresolvable drug code, which the request does depend on.
 	 *
 	 * <p>A host may state a determination more than once — a series of eGFRs, a weight from every
 	 * consultation — and only one of them is ever evaluated: the rules engine takes the most recent
@@ -276,17 +278,15 @@ public class ClinicalContextMapper {
 			Coding coding = firstCodingForSystem(observation.getCode(), Systems.LOINC);
 			if (coding == null) {
 				throw new InvalidRequestException(
-						"Observation.code requires a coding in " + Systems.LOINC
-								+ "; the determinations medication surveillance reads are "
-								+ determinations.acceptedCodes());
+						"Observation.code requires a coding in " + Systems.LOINC);
 			}
 
 			Determination determination = determinations.forLoinc(coding.getCode());
 			if (determination == null) {
-				throw new InvalidRequestException(
-						"LOINC code '" + coding.getCode() + "' is not a determination medication"
-								+ " surveillance reads, so sending it would suggest it had been"
-								+ " weighed. Accepted: " + determinations.acceptedCodes());
+				// Not a determination medication surveillance reads. Accepted as valid input, but
+				// nothing downstream would read it, so it is dropped rather than forwarded — see the
+				// class Javadoc on LabDeterminations.
+				continue;
 			}
 
 			Effective effective = effective(observation);

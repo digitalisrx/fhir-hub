@@ -107,22 +107,25 @@ Description: "Reason for encounter. The code shape is additionally constrained b
 * ^experimental = false
 * include codes from system $icpc
 
-// The determinations medication surveillance actually reads, and nothing else.
+// Any LOINC code validates on Parameters.parameter:observation — see LoincVS below. This value
+// set is the narrower, meaningful list: the determinations a beslisregel or the dose-band model
+// actually reads, and nothing else. It is not the binding that decides what an Observation.code
+// may carry; it is documentation, kept as a value set so the guide can render it as a table and
+// LabDeterminationsTest can pin it against fhir/LabDeterminations.java.
 //
-// The list is closed, and it is short because the G-Standaard's own list is: BST685T rows with
-// THMFBP = 2000 are the complete set of patient measurements an MFB rule can test — twelve of
-// them, four used by current rules — plus weight and height, which dose checking reads. A lab
-// value outside this set is not merely unused: accepting it would tell a prescriber their lab
-// data had been weighed when nothing looked at it.
+// The list is short because the G-Standaard's own list is: BST685T rows with THMFBP = 2000 are
+// the complete set of patient measurements an MFB rule can test — twelve of them, four used by
+// current rules — plus weight and height, which dose checking reads. A lab value outside this set
+// validates and is accepted, and then forwarded nowhere: nothing here reads it, so sending it
+// upstream would tell a prescriber their lab data had been weighed when nothing looked at it.
 //
-// Enumerated rather than "include codes from system http://loinc.org", so the binding says which
-// codes are meant. fhir/LabDeterminations.java carries the same list with the MFB parameter each
-// code feeds, the caption sent when a host supplies no display, and the units it accepts;
-// LabDeterminationsTest pins the two together.
+// fhir/LabDeterminations.java carries the same list with the MFB parameter each code feeds, the
+// caption sent when a host supplies no display, and the units it accepts; LabDeterminationsTest
+// pins the two together.
 ValueSet: LabDeterminationVS
 Id: lab-determination
 Title: "Laboratory determinations medication surveillance reads"
-Description: "The LOINC codes accepted on Parameters.parameter:observation. These are the codes the G-Standaard itself attaches to its MFB parameters (BST684T rows with MFBEXSRT = 4, 'LOINC / Nederlandse Labcodeset'), so the rules engine can test what a host sends: eGFR, kalium, INR, sirolimus, natrium and lithium, plus weight and height for dose checking. One eGFR code only — Dutch laboratories report CKD-EPI, so the MDRD and cystatin C codes the G-Standaard also lists are not accepted here."
+Description: "The LOINC codes that are meaningful on Parameters.parameter:observation — not a restriction on what Observation.code may carry (see LoincVS for that), but the codes the G-Standaard itself attaches to its MFB parameters (BST684T rows with MFBEXSRT = 4, 'LOINC / Nederlandse Labcodeset'), so the rules engine can test what a host sends: eGFR, kalium, INR, sirolimus, natrium and lithium, plus weight and height for dose checking. One eGFR code only — Dutch laboratories report CKD-EPI, so the MDRD and cystatin C codes the G-Standaard also lists are not read here."
 * ^status = #draft
 * ^experimental = false
 * $loinc#62238-1 "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)/1.73 sq M"
@@ -135,6 +138,17 @@ Description: "The LOINC codes accepted on Parameters.parameter:observation. Thes
 * $loinc#14334-7 "Lithium [Moles/volume] in Serum or Plasma"
 * $loinc#29463-7 "Body weight"
 * $loinc#8302-2 "Body height"
+
+// The actual binding on Observation.code: any LOINC code, because unlike the closed lists this
+// interface enforces for drugs and allergies, an unread lab value costs nothing to accept — it is
+// simply not forwarded. See LabDeterminationVS above for which codes are meaningful.
+ValueSet: LoincVS
+Id: loinc
+Title: "LOINC"
+Description: "Any LOINC code. Only the determinations in LabDeterminationVS feed a beslisregel or the dose-band model; see the Lab determinations page."
+* ^status = #draft
+* ^experimental = false
+* include codes from system $loinc
 
 ValueSet: OpiumActVS
 Id: opium-act-classification

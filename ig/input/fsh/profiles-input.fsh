@@ -93,12 +93,12 @@ Profile: FhirHubLabObservation
 Parent: Observation
 Id: fhirhub-LabObservation
 Title: "fhir-hub laboratory Observation"
-Description: "A single laboratory determination or body measurement, coded in LOINC, from the closed list of determinations medication surveillance reads."
+Description: "A single laboratory determination or body measurement, coded in LOINC. Any LOINC code validates; only the determinations in LabDeterminationVS feed medication surveillance."
 * ^status = #draft
 * code 1..1
-* code from LabDeterminationVS (required)
-* code ^short = "One LOINC code, from the determinations medication surveillance reads"
-* code ^comment = "The list is closed and short, because the G-Standaard's list of testable measurements is: see LabDeterminationVS. A determination outside it is a 400 rather than a value that is quietly ignored — a prescriber who sent a lab result and got no signal would otherwise read that as an all-clear. Coding.display is passed on as the caption Prescriptor shows, and is best left out: this interface supplies its own caption, while a display that is not LOINC's own term for the code is a validation error in any tooling that has LOINC loaded."
+* code from LoincVS (required)
+* code ^short = "One LOINC code"
+* code ^comment = "Any LOINC code validates. Only the determinations LabDeterminationVS lists feed a beslisregel or the dose-band model — sending a code outside it is accepted, and then forwarded nowhere, because nothing here reads it. Coding.display is passed on as the caption Prescriptor shows, and is best left out: this interface supplies its own caption, while a display that is not LOINC's own term for the code is a validation error in any tooling that has LOINC loaded."
 * effective[x] only dateTime
 * effectiveDateTime 1..1
 * effectiveDateTime ^comment = "Required, because the rules test the age of the value as well as the value: 'is the ClCr older than 13 months', 'is the kaliumspiegel older than 72 hours', 'is the INR at most 24 hours old'. A value without a date cannot be evaluated. It also decides which result is used: where a host sends several results for one LOINC code, only the most recent one is forwarded and the rest are dropped. Send the time of day when you have it — results carrying a date alone count as midnight, so two from the same day are equally recent and the tie is resolved by taking the one sent first, not the later one."

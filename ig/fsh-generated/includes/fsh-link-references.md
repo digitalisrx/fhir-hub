@@ -25,6 +25,7 @@
 [IcpcVS]: ValueSet-icpc-1-nl.html
 [LabDeterminationVS]: ValueSet-lab-determination.html
 [obs-lengte-cm]: Observation-obs-lengte-cm.html
+[LoincVS]: ValueSet-loinc.html
 [MedicationCodeVS]: ValueSet-medication-code.html
 [FhirHubSurveillanceFinding]: StructureDefinition-fhirhub-SurveillanceFinding.html
 [FhirHubSurveillanceBundle]: StructureDefinition-fhirhub-SurveillanceBundle.html

@@ -10,12 +10,18 @@ import org.springframework.stereotype.Component;
 /**
  * The laboratory determinations medication surveillance reads, in LOINC.
  *
+ * <h2>Any LOINC observation is accepted; this list is what is meaningful</h2>
+ * A host may send any LOINC code — nothing here refuses one it does not recognise. What this class
+ * holds is narrower: the determinations a beslisregel or the dose-band model actually reads. A code
+ * outside this list is accepted, and then forwarded nowhere, because the rules engine has nothing to
+ * match it against — sending it upstream would tell a prescriber their lab data had been weighed
+ * when nothing read it. Silence, not a 400: unlike an unresolvable drug code, an unread lab value is
+ * not something the request depends on, so there is nothing to fail the request over.
+ *
  * <h2>The list is the G-Standaard's, not ours</h2>
  * {@code BST684T} publishes, per MFB parameter, the external codes that count as that parameter:
  * rows with {@code MFBEXSRT = 4} are "LOINC / Nederlandse Labcodeset". Those rows are this list.
- * A code outside them is not merely unusual — the rules engine has nothing to match it against, so
- * a value sent under it would tell a prescriber their lab data had been weighed when nothing read
- * it. Which measurements can be tested at all is equally fixed: {@code BST685T} rows with
+ * Which measurements can be tested at all is equally fixed: {@code BST685T} rows with
  * {@code THMFBP = 2000}, twelve of them, of which current rules use four.
  *
  * <h2>LOINC travels all the way through</h2>
@@ -194,17 +200,20 @@ public class LabDeterminations {
 		byLoinc.put(loinc, new Determination(loinc, mfbParameter, display, unit, factorByUnit, nhg));
 	}
 
-	/** The determination for a LOINC code, or null when it is not one surveillance reads. */
+	/**
+	 * The determination for a LOINC code, or null when it is a code medication surveillance does not
+	 * read — which is not a rejection, since any LOINC code is valid input; see the class Javadoc.
+	 */
 	public Determination forLoinc(String loincCode) {
 		return loincCode == null ? null : byLoinc.get(loincCode);
 	}
 
-	/** Every accepted LOINC code, in the order this class lists them. */
+	/** Every LOINC code that feeds a beslisregel or the dose-band model, in the order listed above. */
 	public List<String> acceptedCodes() {
 		return List.copyOf(byLoinc.keySet());
 	}
 
-	/** Every accepted determination, so the profile and the documentation can be checked against it. */
+	/** Every determination this class holds, so the documentation can be checked against it. */
 	public List<Determination> all() {
 		return List.copyOf(byLoinc.values());
 	}

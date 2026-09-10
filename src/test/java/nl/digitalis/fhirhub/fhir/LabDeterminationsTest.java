@@ -18,9 +18,12 @@ import nl.digitalis.fhirhub.fhir.LabDeterminations.Determination;
 import nl.digitalis.fhirhub.fhir.LabDeterminations.NhgEquivalent;
 
 /**
- * The accepted determinations are written down twice — as a Java table that maps each LOINC code
- * onto its MFB parameter, its caption and the units it accepts, and as the value set the profile
- * binds — and the two meet only in a payload. This is the test that notices when they drift.
+ * The determinations medication surveillance actually reads are written down twice — as a Java
+ * table that maps each LOINC code onto its MFB parameter, its caption and the units it accepts,
+ * and as the documentation value set the guide renders — and the two meet only in a payload. This
+ * is the test that notices when they drift. Neither list is what the profile accepts: any LOINC
+ * code validates on {@code Observation.code} (see {@code LoincVS} and
+ * {@code TerminologyEnforcementTest}); this list is narrower, and documents what is meaningful.
  */
 class LabDeterminationsTest {
 
@@ -30,7 +33,7 @@ class LabDeterminationsTest {
 	private final LabDeterminations determinations = new LabDeterminations();
 
 	@Test
-	void theProfileAcceptsExactlyTheDeterminationsTheTableCanForward() throws IOException {
+	void theDocumentationValueSetListsExactlyTheDeterminationsTheTableCanForward() throws IOException {
 		assertThat(codesInTheValueSet())
 				.as("LOINC codes in %s", VALUE_SET)
 				.containsExactlyInAnyOrderElementsOf(determinations.acceptedCodes());

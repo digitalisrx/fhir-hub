@@ -156,23 +156,36 @@ class SessionParametersMapperTest {
 	}
 
 	/**
-	 * A determination no rule reads is refused rather than forwarded: a prescriber who sent a lab
-	 * value and got no signal would otherwise read that as an all-clear.
+	 * A determination no rule reads is accepted, not refused — any LOINC code is valid input — but
+	 * dropped rather than forwarded: nothing downstream would read it, and forwarding it would leave
+	 * the prescriber believing a value had been weighed when nothing read it.
 	 */
 	@Test
-	void rejectsADeterminationSurveillanceDoesNotRead() {
-		assertThatThrownBy(() -> labResultFor("718-7", 8.1, "mmol/L"))
-				.isInstanceOf(InvalidRequestException.class)
-				.hasMessageContaining("not a determination medication surveillance reads");
+	void dropsADeterminationSurveillanceDoesNotRead() {
+		assertThat(laboratoryDataFor("718-7", 8.1, "mmol/L")).isEmpty();
 	}
 
-	/** The G-Standaard lists MDRD and cystatin C for the nierfunctie; Dutch labs report CKD-EPI. */
+	private List<LabResult> laboratoryDataFor(String loinc, double value, String ucumCode) {
+		Parameters parameters = parameters();
+		parameters.addParameter().setName(SessionParametersMapper.PARAM_OBSERVATION)
+				.setResource(new Observation()
+						.setCode(concept(Systems.LOINC, loinc))
+						.setValue(quantity(value, ucumCode))
+						.setEffective(new DateTimeType("2024-07-04")));
+
+		return mapper.toSessionRequest(bind(parameters, SessionType.FORMULARY))
+				.patient().laboratoryData();
+	}
+
+	/**
+	 * The G-Standaard lists MDRD and cystatin C for the nierfunctie; Dutch labs report CKD-EPI. Both
+	 * codes validate as LOINC, but neither feeds a rule here, so both are dropped rather than
+	 * rejected.
+	 */
 	@Test
-	void rejectsTheEgfrFormulasDutchLaboratoriesDoNotReport() {
-		assertThatThrownBy(() -> labResultFor("77147-7", 32, "mL/min/{1.73_m2}"))
-				.isInstanceOf(InvalidRequestException.class);
-		assertThatThrownBy(() -> labResultFor("50210-4", 32, "mL/min/{1.73_m2}"))
-				.isInstanceOf(InvalidRequestException.class);
+	void dropsTheEgfrFormulasDutchLaboratoriesDoNotReport() {
+		assertThat(laboratoryDataFor("77147-7", 32, "mL/min/{1.73_m2}")).isEmpty();
+		assertThat(laboratoryDataFor("50210-4", 32, "mL/min/{1.73_m2}")).isEmpty();
 	}
 
 	@Test

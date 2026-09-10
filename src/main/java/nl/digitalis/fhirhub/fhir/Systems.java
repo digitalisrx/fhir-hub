@@ -72,8 +72,10 @@ public final class Systems {
 	/**
 	 * LOINC, the system laboratory determinations are coded in on the way in.
 	 *
-	 * <p>Which LOINC codes are accepted is not open: see {@link LabDeterminations}. The code is
-	 * forwarded as it arrives — the upstream tests LOINC numbers itself.
+	 * <p>Any LOINC code is accepted; only the determinations in {@link LabDeterminations} feed a
+	 * beslisregel or the dose-band model, so a code outside that list is accepted but forwarded
+	 * nowhere. A code the upstream does read is forwarded as it arrives — the upstream tests LOINC
+	 * numbers itself.
 	 */
 	public static final String LOINC = "http://loinc.org";
 

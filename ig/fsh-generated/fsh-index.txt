@@ -32,8 +32,9 @@ ValueSet-allergy-causative-agent.json                                  AllergyCa
 ValueSet-contra-indication.json                                        ContraIndicationVS                 ValueSet    terminology.fsh            73 - 80
 ValueSet-dispensed-medication-code.json                                DispensedMedicationCodeVS          ValueSet    terminology.fsh            91 - 100
 ValueSet-icpc-1-nl.json                                                IcpcVS                             ValueSet    terminology.fsh            102 - 108
-ValueSet-lab-determination.json                                        LabDeterminationVS                 ValueSet    terminology.fsh            122 - 137
+ValueSet-lab-determination.json                                        LabDeterminationVS                 ValueSet    terminology.fsh            125 - 140
+ValueSet-loinc.json                                                    LoincVS                            ValueSet    terminology.fsh            145 - 151
 ValueSet-medication-code.json                                          MedicationCodeVS                   ValueSet    terminology.fsh            82 - 89
-ValueSet-opium-act-classification.json                                 OpiumActVS                         ValueSet    terminology.fsh            139 - 145
+ValueSet-opium-act-classification.json                                 OpiumActVS                         ValueSet    terminology.fsh            153 - 159
 ValueSet-patient-gender.json                                           PatientGenderVS                    ValueSet    profiles-input.fsh         17 - 25
 ValueSet-prescription-input-medication.json                            PrescriptionInputMedicationVS      ValueSet    profiles-input.fsh         130 - 138

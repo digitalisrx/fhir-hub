@@ -781,9 +781,12 @@ Same shapes, same rule: no 500 permits a conclusion about the patient's medicati
 
 ## Lab determinations
 
-Lab values are coded in **LOINC** and nothing else, from a closed list. The G-Standaard publishes
-which LOINC code counts as which beslisregel parameter and the rules engine tests the code you
-send, so nothing is translated on the way through.
+Lab values are coded in **LOINC** and nothing else. Any LOINC code is accepted on
+`Parameters.parameter:observation` — this is not a closed list — but only the determinations below
+are actually read by medication surveillance: the G-Standaard publishes which LOINC code counts as
+which beslisregel parameter or feeds dose checking, and the rules engine tests the code you send,
+so nothing is translated on the way through. A LOINC code outside this table is accepted and then
+forwarded nowhere: it costs nothing to send, but it is not weighed, checked or reported on either.
 
 | Determination | `code` (LOINC) | `valueQuantity.code` | Read by |
 | --- | --- | --- | --- |
@@ -798,15 +801,20 @@ send, so nothing is translated on the way through.
 | Gewicht | `29463-7` | `kg` | dose checking |
 | Lengte | `8302-2` | `cm` | dose checking |
 
-- **A determination outside the list is a 400, not a silent no-op**, because a prescriber who
-  supplied a lab result and saw no warning would read that as an all-clear.
-- **One eGFR code**: Dutch laboratories report CKD-EPI, so send `62238-1`. `77147-7` (MDRD) and
-  `50210-4` (cystatin C) are not accepted — raise it with Digitalis rather than re-labelling a
-  value, because the formulas do not give the same number.
-- **The unit is checked against the code** (`system: "http://unitsofmeasure.org"` plus the `code`
-  above), because the value is evaluated in the unit the rule was written in: kalium in mg/dL is a
-  different answer, not a rounded one. An eGFR must arrive as `mL/min/{1.73_m2}`, not `mL/min`.
-  Nothing is converted: the unit in the table is the only one accepted, and anything else is a 400.
+- **A determination outside this table is accepted, not a 400 — and not forwarded either.** It is
+  not refused, because nothing about the request depends on a lab value nothing here reads; it is
+  not sent upstream either, because that would tell a prescriber it had been weighed when nothing
+  read it. Sending one is a silent no-op: no error, no signal, nothing in the Hub's report.
+- **One eGFR code is read**: Dutch laboratories report CKD-EPI, so send `62238-1` if you want the
+  nierfunctie checked. `77147-7` (MDRD) and `50210-4` (cystatin C) validate as LOINC codes but are
+  not in this table — raise it with Digitalis rather than re-labelling a value, because the
+  formulas do not give the same number.
+- **The unit is checked against the code, for a determination in this table** (`system:
+  "http://unitsofmeasure.org"` plus the `code` above), because the value is evaluated in the unit
+  the rule was written in: kalium in mg/dL is a different answer, not a rounded one. An eGFR must
+  arrive as `mL/min/{1.73_m2}`, not `mL/min`. Nothing is converted: the unit in the table is the
+  only one accepted for that code, and anything else is a 400 — but only for a code the table
+  lists; a code outside it carries no unit obligation because nothing evaluates its value at all.
 - **A height is `cm`; `m` is a 400.** Metres used to be accepted and converted
   exactly. They are not any more, because R4 validates every `Observation` coded `8302-2` against
   its own `bodyheight` profile — whatever profile the resource claims — and that binds the unit to
@@ -818,10 +826,11 @@ send, so nothing is translated on the way through.
   core validation elsewhere. Send them and you satisfy both — the
   [example](Observation-obs-lengte-cm.html) shows the shape.
 - **Send no `display` unless it is LOINC's own term.** Nothing here checks it: LOINC is not in this
-  service's validator, so any display passes while the `code` is still checked against the value
-  set above. It is forwarded verbatim as the caption the prescriber sees, in preference to this
-  interface's own (`eGFR volgens CKD-EPI`, `Gewicht`) — so a wrong one is displayed, not rejected.
-  A LOINC-loaded validator does reject anything but LOINC's Dutch term.
+  service's validator, so any display passes, the same way any `code` in the LOINC system passes —
+  this service does not itself hold LOINC content to check either one against. It is forwarded
+  verbatim as the caption the prescriber sees, in preference to this interface's own
+  (`eGFR volgens CKD-EPI`, `Gewicht`) — so a wrong one is displayed, not rejected. A LOINC-loaded
+  validator does reject anything but LOINC's Dutch term.
 - **Dates matter as much as values.** Rules test them — *is de ClCr ouder dan 13 maanden*, *is de
   INR max. 24 uur oud* — so `effectiveDateTime` is required, and it is when the sample was taken,
   not when the report was released. A value older than the rule's window counts as absent.
@@ -983,7 +992,6 @@ A 400 comes from one of three places, quoted as returned so you can recognise th
 **This interface's own rules**, for what a profile cannot express:
 
 - `G-Standaard has no product for PRK 404040, so it cannot take part in medication surveillance`
-- `LOINC code '718-7' is not a determination medication surveillance reads, so sending it would suggest it had been weighed. Accepted: [62238-1, 2823-3, …]`
 - `Observation.valueQuantity for 2823-3 (Kalium (serum of plasma)) must be in [mmol/L] as a UCUM code, not 'mg/dL': the upstream carries no unit, so the value is evaluated as mmol/L`
 - `PRK code '18996a' is not numeric`
 - `Parameters.parameter[5] has no name, so nothing here could tell what it is`

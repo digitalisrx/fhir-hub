@@ -224,17 +224,19 @@ envelope and the DigitalisRx document inside it without a prefix on every line. 
 argument is always a literal from a schema — a caller-supplied one would smuggle markup past the
 escaping.
 
-**Lab values are LOINC end to end, and the list is the G-Standaard's.** There is no NHG Tabel 45
-mapping and there should not be one: the upstream carries lab data as `<LOINC num=…>` and the MFB
-datatest generator builds a `DatatestLOINC` keyed on that number, so translating would add a table
-to maintain and a class of determinations that cannot be expressed at all. `fhir/LabDeterminations`
-holds the list and is a copy of published data — `BST684T` rows with `MFBEXSRT = 4` say which LOINC
-codes count as which MFB parameter, `BST685T` rows with `THMFBP = 2000` are the twelve measurements
-a rule can test at all. A code outside the list is refused, because forwarding it would tell a
-prescriber their lab data had been weighed when nothing read it. `LabDeterminationsTest` pins the
-table against `LabDeterminationVS`, and that binding *does* catch a wrong code even though LOINC is
-not distributed here, because the value set enumerates its concepts — the mechanism the G-Standaard
-bindings cannot use.
+**Any LOINC observation is accepted; the G-Standaard's list is what surveillance actually reads.**
+`Observation.code` binds to `LoincVS` (`include codes from system $loinc`), not an enumerated list,
+so a host can send any LOINC code. `fhir/LabDeterminations` holds the narrower list that matters —
+`BST684T` rows with `MFBEXSRT = 4` say which LOINC codes count as which MFB parameter, `BST685T`
+rows with `THMFBP = 2000` are the twelve measurements a rule can test at all — and there is no NHG
+Tabel 45 mapping and there should not be one: the upstream carries lab data as `<LOINC num=…>` and
+the MFB datatest generator builds a `DatatestLOINC` keyed on that same number, so translating would
+add a table to maintain and a class of determinations that cannot be expressed at all. A code
+outside `LabDeterminations` is accepted and then dropped in `ClinicalContextMapper`, never forwarded,
+because sending it would tell a prescriber their lab data had been weighed when nothing read it —
+and refusing the request over it would fail closed for no clinical reason, unlike an unresolvable
+drug code. `LabDeterminationsTest` pins the table against `LabDeterminationVS`, the documentation
+value set the guide renders as a table; that value set is no longer what the profile binds.
 
 One eGFR code, `62238-1` (CKD-EPI), because that is what Dutch laboratories report. `77147-7` (MDRD)
 and `50210-4` (cystatin C) are one line each to add, but re-labelling one formula as another is not
