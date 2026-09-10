@@ -203,11 +203,11 @@ class SurveillanceIntegrationTest {
 	}
 
 	/**
-	 * The G-Standaard lookup fails closed here exactly as it does for a session: a code the
-	 * G-Standaard has no product for aborts the check rather than dropping the drug out of it.
+	 * A code the G-Standaard has no product for is forwarded rather than aborting the check,
+	 * using the host's own code in place of the GPK (and PRK) that could not be looked up.
 	 */
 	@Test
-	void refusesADrugTheGStandaardCannotResolve() {
+	void passesThroughADrugTheGStandaardCannotResolve() {
 		stub("medication-surveillance-response.xml");
 
 		Parameters in = surveillanceParameters();
@@ -216,9 +216,9 @@ class SurveillanceIntegrationTest {
 
 		HttpResponse<String> response = postFhir("/fhir/surveillance/$check-medication-request", in);
 
-		assertThat(response.statusCode()).isEqualTo(400);
-		assertThat(diagnostics(response)).contains("G-Standaard has no product for HPK 404404");
-		assertThat(hub.findAll(postRequestedFor(anyUrl()))).isEmpty();
+		assertThat(response.statusCode()).isEqualTo(200);
+		String sent = hub.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+		assertThat(sent).contains("PRK=\"404404\" GPK=\"404404\" HPK=\"404404\"");
 	}
 
 	/**

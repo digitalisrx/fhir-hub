@@ -318,8 +318,9 @@ element, `MedicationType`, the `Prescription` member, the validation rules and t
 moved at v2 and all live in different files here. `XmlRpcRequestBuilderTest` pins the wire format,
 so start there.
 
-**Medication surveillance fails closed.** A drug whose code G-Standaard cannot resolve aborts the
-request with a 400 instead of being dropped from the list.
+**An unresolvable medication code is forwarded, not refused.** `MedicationCodeResolver` logs a
+warning naming the code and uses it in place of the GPK (and PRK, at HPK level) it could not look
+up, rather than aborting the request with a 400. The code still has to be numeric.
 
 **`prescription` is `1..*` on `$check-medication-request`, and there is no
 `fhirhub-something-to-check` invariant** — a mandatory prescription makes one unfireable, so it was
@@ -593,11 +594,12 @@ key is `errs`, not `errors`.
 
 ## Deliberately different from `json-interface`
 
-**Current medication is enriched before it is sent, and fails closed.** `json-interface` emits
-`<medication>` from the host's own codes at the level supplied — its `getAdditionalDrugCodes` call is
-commented out in `translate-xml.ts`, so no PRK + GPK pair is added. `MedicationCodeResolver` does
-that lookup here, which is what makes an unresolvable code a 400 rather than a silently thinner
-medication list. Do not "restore compatibility" by dropping the lookup.
+**Current medication is enriched before it is sent.** `json-interface` emits `<medication>` from
+the host's own codes at the level supplied — its `getAdditionalDrugCodes` call is commented out in
+`translate-xml.ts`, so no PRK + GPK pair is added. `MedicationCodeResolver` does that lookup here;
+when G-Standaard has no product for a code it logs a warning and forwards the host's own code in
+its place, rather than dropping the drug or refusing the request. Do not "restore compatibility" by
+dropping the lookup.
 
 `prescriptor-api`'s `OpenSessionRequestBuilder.getAllergies` is the authority on which allergy member
 carries which subsystem (`Allergies`→OGGRP, `AlStam`→SNK, `AlStof`→SSK). Both interfaces populate

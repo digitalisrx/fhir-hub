@@ -139,10 +139,10 @@ attribute is dropped from surveillance without an error. Since every entry is re
 fhir-hub sends `MedicationType` 9 for any non-empty list rather than deriving it from the entries,
 and the host's per-entry level stops mattering. See `XmlRpcRequestBuilder.medicationType`.
 
-**An unresolvable drug code fails the request with a 400.** Surveillance on an incomplete
-medication list does not fail visibly — it answers "no interaction found", a false negative a
-prescriber cannot tell from a genuine all-clear. The `OperationOutcome` names the code. Do not
-soften this without a clinical decision behind it.
+**An unresolvable drug code is forwarded, not refused.** `MedicationCodeResolver` logs a warning
+naming the code and uses it in place of the GPK (and PRK, when the host coded at HPK level) that
+could not be looked up, so the request still numeric-validates the code but no longer requires
+G-Standaard to know it.
 
 This is the one part of the interface that needs a database: a read-only reference lookup on
 `gstandaard_views`, queried directly by `MedicationCodeResolver` over its own Hikari pool

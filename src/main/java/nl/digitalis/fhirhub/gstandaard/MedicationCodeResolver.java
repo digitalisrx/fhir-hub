@@ -26,12 +26,10 @@ import nl.digitalis.fhirhub.prescriptor.CodeSystemTokens;
  * needs PRK and GPK together (plus HPK when the host had it), so each drug is looked up in the
  * {@code medcode} view of the G-Standaard database before the session is opened.
  *
- * <h2>Why this fails loudly</h2>
- * An unresolvable code aborts the session rather than opening one with an incomplete
- * medication list. Surveillance that silently receives fewer drugs than the patient is taking
- * does not fail visibly: it answers "no interaction found", which is a false negative in the
- * dangerous direction, and a prescriber cannot tell it apart from a genuine all-clear. So the
- * safe behaviour is to refuse and name the code that could not be resolved.
+ * <h2>An unresolvable code is passed through, not refused</h2>
+ * A numeric code the G-Standaard has no product for is logged as a warning, naming the code, and
+ * forwarded using the host's own code in place of the GPK (and the PRK, when the host coded at
+ * HPK level) that could not be looked up. The code still has to be numeric — see {@link #toCode}.
  */
 @Service
 public class MedicationCodeResolver {
@@ -86,14 +84,15 @@ public class MedicationCodeResolver {
 		long code = toCode(medication);
 
 		// The first row is taken rather than a single row demanded: a drug on several packagings
-		// is normal, and an unknown code is an expected outcome that has to produce the message
+		// is normal, and an unknown code is an expected outcome that has to produce the warning
 		// below rather than an exception from the query layer.
 		MedicationCodes match = firstMatch(byHpk ? BY_HPK : BY_PRK, code, byHpk);
 
 		if (match == null) {
-			throw new InvalidRequestException(
-					"G-Standaard has no product for %s %s, so it cannot take part in medication surveillance"
-							.formatted(medication.codeSystem(), medication.code()));
+			log.warn("G-Standaard has no product for {} {}; forwarding it unresolved",
+					medication.codeSystem(), medication.code());
+			int rawCode = Math.toIntExact(code);
+			return new MedicationCodes(rawCode, rawCode, byHpk ? rawCode : null, null);
 		}
 
 		log.debug("Resolved {} {} to PRK {} / GPK {}",
@@ -104,7 +103,7 @@ public class MedicationCodeResolver {
 
 	/**
 	 * The whole of this application's JDBC. {@code null} when the code is unknown, which the
-	 * caller turns into the 400 that names it.
+	 * caller turns into the warning that names it and forwards the code unresolved.
 	 *
 	 * <p>A {@link SQLException} is not that case and must not be confused with it: the database
 	 * being unreachable means surveillance cannot be run at all, so it becomes a 500 rather than

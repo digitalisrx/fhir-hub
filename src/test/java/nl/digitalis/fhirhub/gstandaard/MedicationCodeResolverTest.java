@@ -76,22 +76,34 @@ class MedicationCodeResolverTest {
 	}
 
 	/**
-	 * An unresolvable drug must abort the session. Dropping it would leave medication
-	 * surveillance answering "no interaction" over an incomplete list — a false negative the
-	 * prescriber cannot distinguish from a genuine all-clear.
+	 * A drug the G-Standaard does not know is forwarded rather than refused, using the host's own
+	 * code in place of the GPK that could not be looked up.
 	 */
 	@Test
-	void refusesADrugThatGStandaardDoesNotKnow() {
-		assertThatThrownBy(() -> resolver.resolve(List.of(new CodedItem("PRK", "404040"))))
-				.isInstanceOf(InvalidRequestException.class)
-				.hasMessageContaining("medication surveillance");
+	void passesThroughADrugThatGStandaardDoesNotKnow() {
+		MedicationCodes codes = resolver.resolve(List.of(new CodedItem("PRK", "404040"))).getFirst();
+
+		assertThat(codes.prk()).isEqualTo(404040);
+		assertThat(codes.gpk()).isEqualTo(404040);
+		assertThat(codes.hpk()).isNull();
+		assertThat(codes.atc()).isNull();
 	}
 
 	@Test
-	void refusesAPrkThatHasNoGpk() {
-		assertThatThrownBy(() -> resolver.resolve(List.of(new CodedItem("PRK", "99999"))))
-				.isInstanceOf(InvalidRequestException.class)
-				.hasMessageContaining("99999");
+	void passesThroughAPrkThatHasNoGpk() {
+		MedicationCodes codes = resolver.resolve(List.of(new CodedItem("PRK", "99999"))).getFirst();
+
+		assertThat(codes.prk()).isEqualTo(99999);
+		assertThat(codes.gpk()).isEqualTo(99999);
+	}
+
+	@Test
+	void passesThroughAnUnresolvableHpkWithTheHpkFieldSet() {
+		MedicationCodes codes = resolver.resolve(List.of(new CodedItem("HPK", "999999"))).getFirst();
+
+		assertThat(codes.prk()).isEqualTo(999999);
+		assertThat(codes.gpk()).isEqualTo(999999);
+		assertThat(codes.hpk()).isEqualTo(999999);
 	}
 
 	@Test

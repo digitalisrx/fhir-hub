@@ -121,15 +121,13 @@ class FhirHubIntegrationTest {
 	}
 
 	/**
-	 * A drug G-Standaard cannot resolve aborts the session. Opening one anyway would leave
-	 * surveillance running on an incomplete list and reporting a false all-clear.
+	 * A drug G-Standaard cannot resolve is forwarded rather than aborting the session, using the
+	 * host's own code in place of the GPK that could not be looked up.
 	 */
 	@Test
-	void refusesToOpenASessionWithUnresolvableMedication() {
+	void opensASessionWithUnresolvableMedicationForwardedAsIs() {
 		stub("open-session-response.xml");
 
-		// Conformant, so that what this test proves is the G-Standaard check rather than the
-		// profile: surveillance must fail closed on a code it cannot resolve.
 		MedicationStatement unknown = new MedicationStatement();
 		unknown.setStatus(MedicationStatement.MedicationStatementStatus.ACTIVE);
 		unknown.setSubject(unknownSubject());
@@ -141,14 +139,10 @@ class FhirHubIntegrationTest {
 
 		HttpResponse<String> response = postFhir("/fhir/evs/$formulary-session", in);
 
-		assertThat(response.statusCode()).isEqualTo(400);
-		OperationOutcome outcome = parser.parseResource(OperationOutcome.class, response.body());
-		assertThat(outcome.getIssueFirstRep().getDiagnostics())
-				.contains("404040")
-				.contains("medication surveillance");
+		assertThat(response.statusCode()).isEqualTo(200);
 
-		// Nothing was sent upstream: the session was never opened.
-		assertThat(prescriptor.findAll(postRequestedFor(anyUrl()))).isEmpty();
+		String sent = prescriptor.findAll(postRequestedFor(anyUrl())).getFirst().getBodyAsString();
+		assertThat(sent).contains("<GStandaard PRK=\"404040\" GPK=\"404040\"");
 	}
 
 	@Test
